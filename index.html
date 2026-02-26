@@ -2042,9 +2042,6 @@ function showQuizQuestion() {
   opts.sort(() => Math.random() - 0.5);
 
   const container = document.getElementById('quizOptions');
-  container.querySelectorAll('.option-btn').forEach(b => {
-    b.classList.remove('correct', 'wrong');
-  });
   container.innerHTML = '';
   opts.forEach(o => {
     const btn = document.createElement('button');
