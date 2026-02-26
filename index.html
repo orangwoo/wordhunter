@@ -1,0 +1,2347 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>WordHunter</title>
+
+<!-- PWA Meta -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="WordHunter">
+<meta name="theme-color" content="#58CC02">
+<link rel="apple-touch-icon" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="./icon-512.png">
+<link rel="manifest" href="./manifest.json">
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;800;900&family=Fredoka+One&display=swap');
+
+/* ══════════════════════════════════════
+   DESIGN TOKENS  (Duolingo × Apple HIG)
+══════════════════════════════════════ */
+:root {
+  /* Core palette */
+  --green:    #58CC02;
+  --green-dk: #45a800;
+  --green-lt: #d7ffb8;
+  --blue:     #1CB0F6;
+  --blue-dk:  #0e8ec7;
+  --red:      #FF4B4B;
+  --red-dk:   #cc3c3c;
+  --yellow:   #FFD900;
+  --yellow-lt:#fffae5;
+  --purple:   #CE82FF;
+  --orange:   #FF9600;
+
+  /* Surfaces */
+  --bg:       #F7F7F7;
+  --surface:  #FFFFFF;
+  --card:     #F0F0F0;
+  --border:   #E5E5E5;
+  --border2:  #D0D0D0;
+
+  /* Text */
+  --text:     #3C3C3C;
+  --text2:    #777777;
+  --text-inv: #FFFFFF;
+
+  /* Shadows (Duolingo 3D button effect) */
+  --shadow-green:  0 4px 0 var(--green-dk);
+  --shadow-blue:   0 4px 0 var(--blue-dk);
+  --shadow-red:    0 4px 0 var(--red-dk);
+  --shadow-gray:   0 4px 0 #b0b0b0;
+  --shadow-yellow: 0 4px 0 #c9a900;
+
+  --r:     16px;
+  --r-sm:  10px;
+  --r-xl:  24px;
+  --r-full:9999px;
+}
+
+/* ── Reset & Base ── */
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  min-height: -webkit-fill-available;
+  overflow-x: hidden;
+}
+
+/* subtle dot pattern background */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(circle, #d8d8d8 1px, transparent 1px);
+  background-size: 24px 24px;
+  opacity: 0.5;
+  pointer-events: none; z-index: 0;
+}
+
+.container {
+  max-width: 520px; margin: 0 auto;
+  padding: 0 16px 40px;
+  position: relative; z-index: 1;
+}
+
+/* ══════════════════════════════════════
+   HEADER
+══════════════════════════════════════ */
+.header {
+  text-align: center;
+  padding: 20px 0 14px;
+  position: relative;
+}
+.logo {
+  font-family: 'Fredoka One', cursive;
+  font-size: 2.6rem;
+  color: var(--green);
+  letter-spacing: 1px;
+  line-height: 1;
+  text-shadow: 0 3px 0 var(--green-dk);
+}
+.tagline {
+  font-size: 0.8rem;
+  color: var(--text2);
+  margin-top: 4px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+/* ── Dojo Nav ── */
+.dojo-nav-wrap {
+  display: none; justify-content: flex-end;
+  margin-bottom: 8px;
+}
+.dojo-nav-wrap.visible { display: flex; }
+.dojo-nav-btn {
+  background: var(--yellow); color: #3C3C3C;
+  border: none; border-radius: var(--r-full);
+  padding: 8px 14px;
+  font-family: 'Nunito', sans-serif; font-weight: 900;
+  font-size: 0.78rem; cursor: pointer;
+  box-shadow: 0 3px 0 #c9a900;
+  transition: all 0.1s;
+}
+.dojo-nav-btn:active { transform: translateY(3px); box-shadow: none; }
+.dojo-nav-btn .dojo-count {
+  background: var(--red); color: white;
+  border-radius: var(--r-full); padding: 1px 7px;
+  margin-left: 5px; font-size: 0.75rem; font-weight: 900;
+}
+
+/* ══════════════════════════════════════
+   SCREENS
+══════════════════════════════════════ */
+.screen { display: none; animation: slideUp 0.3s cubic-bezier(0.34,1.4,0.64,1); }
+.screen.active { display: block; }
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── API Section ── */
+.api-section {
+  background: var(--surface); border-radius: var(--r);
+  padding: 14px 18px; margin-bottom: 18px;
+  border: 2px solid var(--border);
+}
+.api-section label {
+  font-size: 0.72rem; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 1px;
+  display: block; margin-bottom: 8px; font-weight: 800;
+}
+.api-section input {
+  width: 100%; background: var(--bg);
+  border: 2px solid var(--border); border-radius: var(--r-sm);
+  padding: 10px 14px; color: var(--text);
+  font-family: 'Nunito', sans-serif; font-size: 0.9rem;
+  font-weight: 700; outline: none; transition: border-color 0.2s;
+}
+.api-section input:focus { border-color: var(--blue); }
+
+/* ══════════════════════════════════════
+   TABS
+══════════════════════════════════════ */
+.tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+.tab-btn {
+  flex: 1; padding: 10px 6px;
+  background: var(--surface); border: 2px solid var(--border);
+  border-radius: var(--r-sm); color: var(--text2);
+  font-family: 'Nunito', sans-serif; font-weight: 800;
+  font-size: 0.82rem; cursor: pointer;
+  transition: all 0.15s;
+}
+.tab-btn.active {
+  background: var(--blue); border-color: var(--blue-dk);
+  color: white;
+  box-shadow: 0 3px 0 var(--blue-dk);
+}
+.tab-btn:active { transform: translateY(2px); }
+
+/* ══════════════════════════════════════
+   UPLOAD ZONE
+══════════════════════════════════════ */
+.upload-zone {
+  background: var(--surface); border: 3px dashed var(--border2);
+  border-radius: var(--r-xl); padding: 36px 20px; text-align: center;
+  cursor: pointer; transition: all 0.2s;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--blue); background: #e8f6ff;
+}
+.upload-icon {
+  font-size: 3rem; margin-bottom: 12px; display: block;
+  animation: float 3s ease-in-out infinite;
+}
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+.upload-zone h2 { font-size: 1.1rem; margin-bottom: 6px; color: var(--text); font-weight: 900; }
+.upload-zone p { font-size: 0.82rem; color: var(--text2); font-weight: 700; }
+#fileInput { display: none; }
+.preview-img { width:100%; max-height:180px; object-fit:contain; border-radius:12px; margin-top:14px; display:none; }
+.demo-notice {
+  background: var(--yellow-lt); border: 2px solid var(--yellow);
+  border-radius: var(--r); padding: 12px 16px;
+  font-size: 0.82rem; color: #7a6300; margin-bottom: 16px;
+  text-align: center; font-weight: 800;
+}
+
+/* ══════════════════════════════════════
+   BUTTONS  (Duolingo 3D style)
+══════════════════════════════════════ */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 15px 28px; border-radius: var(--r-full);
+  font-family: 'Nunito', sans-serif; font-weight: 900;
+  font-size: 1rem; cursor: pointer; border: none;
+  transition: all 0.1s; text-decoration: none;
+  letter-spacing: 0.3px;
+  position: relative; top: 0;
+}
+.btn:active { top: 4px; }
+
+.btn-primary {
+  background: var(--green); color: white;
+  width: 100%; margin-top: 18px;
+  font-size: 1.1rem; padding: 17px;
+  box-shadow: var(--shadow-green);
+  border-bottom: 4px solid var(--green-dk);
+}
+.btn-primary:active { box-shadow: none; border-bottom-width: 0; }
+.btn-primary:disabled { background: #ccc; box-shadow: 0 4px 0 #aaa; border-bottom-color: #aaa; cursor: not-allowed; opacity: 0.7; }
+
+.btn-success {
+  background: var(--green); color: white;
+  box-shadow: var(--shadow-green);
+  border-bottom: 4px solid var(--green-dk);
+}
+.btn-success:active { box-shadow: none; border-bottom-width: 0; }
+
+.btn-danger {
+  background: var(--red); color: white;
+  box-shadow: var(--shadow-red);
+  border-bottom: 4px solid var(--red-dk);
+}
+.btn-danger:active { box-shadow: none; border-bottom-width: 0; }
+
+.btn-neutral {
+  background: var(--surface); color: var(--text2);
+  border: 2px solid var(--border);
+  box-shadow: var(--shadow-gray);
+  border-bottom: 4px solid var(--border2);
+}
+.btn-neutral:active { box-shadow: none; border-bottom-width: 2px; }
+
+/* ══════════════════════════════════════
+   LOADING
+══════════════════════════════════════ */
+.loading { text-align: center; padding: 50px 20px; }
+.spinner {
+  width: 48px; height: 48px;
+  border: 4px solid rgba(88,204,2,0.2);
+  border-top-color: var(--green);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin: 0 auto 16px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading p { color: var(--text2); font-weight: 700; }
+
+/* ══════════════════════════════════════
+   WORD LIST
+══════════════════════════════════════ */
+.section-title {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.5rem; color: var(--text);
+  margin-bottom: 4px;
+}
+.badge {
+  display: inline-block;
+  background: var(--green); color: white;
+  border-radius: var(--r-full); padding: 3px 14px;
+  font-size: 0.8rem; font-weight: 900;
+  margin-bottom: 14px;
+}
+
+/* Word list divider */
+.word-list-wrap {
+  margin-bottom: 14px;
+  max-height: 380px; overflow-y: auto;
+  padding-right: 2px;
+}
+.word-list-wrap::-webkit-scrollbar { width: 4px; }
+.word-list-wrap::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 4px; }
+
+.divider-btn-wrap {
+  display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer;
+}
+.divider-btn-wrap .d-line { flex:1; height:2px; background: var(--border); transition: background 0.2s; border-radius: 2px; }
+.divider-btn-wrap:hover .d-line { background: var(--blue); }
+.divider-btn-wrap .d-btn {
+  background: none; border: 2px dashed var(--border2);
+  border-radius: var(--r-full); padding: 4px 12px;
+  color: var(--text2); font-size: 0.72rem; font-family: 'Nunito', sans-serif;
+  font-weight: 800; cursor: pointer; white-space: nowrap; transition: all 0.15s;
+}
+.divider-btn-wrap:hover .d-btn { border-color: var(--blue); color: var(--blue); }
+
+.divider-btn-wrap.active-divider .d-line-active {
+  background: var(--green);
+}
+.d-btn-active {
+  background: var(--green-lt) !important;
+  border-color: var(--green) !important;
+  border-style: solid !important;
+  color: var(--green-dk) !important;
+  font-weight: 900;
+}
+.divider-btn-wrap.active-divider:hover .d-btn-active {
+  background: #ffe0e0 !important;
+  border-color: var(--red) !important;
+  color: var(--red-dk) !important;
+}
+
+.divider-line { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+.divider-line .dl-bar { flex:1; height:3px; background: linear-gradient(90deg, transparent, var(--blue), transparent); border-radius: 2px; }
+.divider-line .dl-label {
+  font-family: 'Fredoka One', cursive; font-size: 0.82rem;
+  color: var(--blue); white-space: nowrap;
+  background: #e8f6ff; padding: 3px 10px;
+  border-radius: var(--r-full); border: 2px solid var(--blue);
+}
+.divider-line .dl-remove {
+  background: none; border: none; color: var(--text2);
+  cursor: pointer; font-size: 0.85rem; padding: 3px 5px;
+  border-radius: 6px; transition: all 0.15s;
+}
+.divider-line .dl-remove:hover { color: var(--red); }
+
+.word-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.group-label {
+  font-family: 'Fredoka One', cursive; font-size: 0.88rem;
+  color: var(--blue); margin: 12px 0 6px; padding-left: 2px;
+}
+
+.word-chip {
+  background: var(--surface); border: 2px solid var(--border);
+  border-radius: var(--r-sm); padding: 12px 14px;
+  cursor: pointer; transition: all 0.15s;
+  position: relative;
+}
+.word-chip:hover { border-color: var(--blue); }
+.word-chip.selected {
+  background: #e8f6ff; border-color: var(--blue);
+  box-shadow: 0 2px 0 var(--blue-dk);
+}
+.word-chip .en { font-weight: 900; font-size: 0.95rem; display: block; color: var(--text); }
+.word-chip .ja { font-size: 0.78rem; color: var(--text2); margin-top: 2px; display: block; font-weight: 700; }
+.remove-btn {
+  position: absolute; top: 5px; right: 7px;
+  background: none; border: none; color: var(--text2);
+  cursor: pointer; font-size: 0.8rem; padding: 2px;
+  opacity: 0; transition: opacity 0.15s;
+}
+.word-chip:hover .remove-btn { opacity: 1; }
+
+/* ── Stage Banner ── */
+.stage-banner {
+  background: var(--surface); border: 2px solid var(--border);
+  border-radius: var(--r); padding: 16px 18px; margin-bottom: 18px;
+}
+.stage-banner .sb-title {
+  font-family: 'Fredoka One', cursive; font-size: 1.1rem;
+  color: var(--text); margin-bottom: 10px;
+}
+.stages { display: flex; gap: 6px; align-items: center; }
+.stage-pill {
+  flex: 1; text-align: center; padding: 10px 6px;
+  background: var(--bg); border-radius: var(--r-sm);
+  border: 2px solid var(--border);
+}
+.stage-pill .s-icon { font-size: 1.5rem; display: block; margin-bottom: 4px; }
+.stage-pill .s-name { font-size: 0.72rem; font-weight: 800; color: var(--text2); }
+.stage-arrow { color: var(--text2); font-size: 1rem; }
+
+/* ══════════════════════════════════════
+   QUIT BUTTON
+══════════════════════════════════════ */
+
+.quit-link {
+  display: block; width: fit-content; margin: 28px auto 0;
+  color: var(--text2); font-size: 0.82rem; font-weight: 800;
+  background: none; border: none; cursor: pointer;
+  font-family: 'Nunito', sans-serif;
+  padding: 6px 12px; border-radius: var(--r-sm);
+  transition: color 0.15s;
+}
+.quit-link:hover { color: var(--red); }
+
+/* ── Quit Confirm Modal ── */
+.quit-modal-bg {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.45); z-index: 300;
+  align-items: center; justify-content: center;
+}
+.quit-modal-bg.show { display: flex; }
+.quit-modal {
+  background: var(--surface); border-radius: var(--r-xl);
+  padding: 28px 24px; text-align: center; width: 300px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+  animation: popIn 0.25s cubic-bezier(0.34,1.5,0.64,1);
+}
+.quit-modal-icon { font-size: 2.8rem; display: block; margin-bottom: 8px; }
+.quit-modal-title {
+  font-family: 'Fredoka One', cursive; font-size: 1.4rem;
+  color: var(--text); margin-bottom: 6px;
+}
+.quit-modal-sub { font-size: 0.85rem; color: var(--text2); font-weight: 700; margin-bottom: 20px; }
+.quit-modal-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ══════════════════════════════════════
+   PROGRESS BAR + HEARTS
+══════════════════════════════════════ */
+.progress-bar-wrap {
+  background: var(--border); border-radius: var(--r-full);
+  height: 16px; margin-bottom: 14px; overflow: hidden;
+  border: 2px solid var(--border2);
+}
+.progress-bar {
+  height: 100%; background: linear-gradient(90deg, var(--green) 0%, #89e219 100%);
+  border-radius: var(--r-full);
+  transition: width 0.5s cubic-bezier(0.34,1.4,0.64,1);
+  position: relative;
+}
+.progress-bar::after {
+  content:''; position:absolute; inset:0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.4) 0%, transparent 60%);
+  border-radius: inherit;
+}
+
+/* ── Game Meta bar ── */
+.game-meta {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 18px;
+}
+.score-badge {
+  font-family: 'Fredoka One', cursive; font-size: 1.1rem;
+  color: var(--orange); display: flex; align-items: center; gap: 4px;
+}
+.counter {
+  font-size: 0.88rem; color: var(--text2); font-weight: 800;
+  background: var(--surface); border: 2px solid var(--border);
+  border-radius: var(--r-full); padding: 4px 12px;
+}
+.streak-badge {
+  font-size: 0.85rem; color: var(--orange); font-weight: 900;
+  min-width: 80px; text-align: right;
+}
+
+/* ══════════════════════════════════════
+   STAGE TRANSITION
+══════════════════════════════════════ */
+.stage-transition { text-align: center; padding: 30px 20px; }
+.st-icon {
+  font-size: 4.5rem; display: block; margin-bottom: 12px;
+  animation: popIn 0.5s cubic-bezier(0.34,1.7,0.64,1);
+}
+@keyframes popIn { from { transform: scale(0) rotate(-15deg); } to { transform: scale(1) rotate(0); } }
+.st-title {
+  font-family: 'Fredoka One', cursive;
+  font-size: 2rem; color: var(--text); margin-bottom: 6px;
+}
+.st-sub { color: var(--text2); font-size: 0.9rem; margin-bottom: 8px; font-weight: 700; }
+.st-score {
+  font-family: 'Fredoka One', cursive; font-size: 1.4rem;
+  color: var(--orange); margin-bottom: 24px;
+}
+.stage-dots { display: flex; gap: 10px; justify-content: center; margin-bottom: 28px; }
+.stage-dot {
+  width: 44px; height: 44px; border-radius: 50%;
+  border: 3px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; transition: all 0.3s;
+}
+.stage-dot.done { background: var(--green); border-color: var(--green-dk); }
+.stage-dot.current { background: var(--blue); border-color: var(--blue-dk); transform: scale(1.25); }
+.stage-dot.upcoming { background: var(--card); }
+
+/* ══════════════════════════════════════
+   FLASH CARD
+══════════════════════════════════════ */
+.flashcard-wrap { perspective: 1200px; margin-bottom: 20px; }
+.flashcard {
+  width: 100%; min-height: 200px; position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.5s cubic-bezier(0.4,0,0.2,1);
+  cursor: pointer;
+}
+.flashcard.flipped { transform: rotateY(180deg); }
+.card-face {
+  position: absolute; width: 100%; min-height: 200px;
+  backface-visibility: hidden;
+  background: var(--surface);
+  border-radius: var(--r-xl);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 32px 28px;
+  border: 3px solid var(--border);
+  box-shadow: 0 6px 0 var(--border2);
+}
+.card-face.back {
+  transform: rotateY(180deg);
+  background: linear-gradient(135deg, #e8f6ff, #eaffdc);
+  border-color: var(--green);
+  box-shadow: 0 6px 0 var(--green-dk);
+}
+.card-word {
+  font-family: 'Fredoka One', cursive;
+  font-size: 2.6rem; text-align: center; color: var(--text);
+}
+.card-hint { font-size: 0.82rem; color: var(--text2); margin-top: 10px; font-weight: 700; }
+.card-translation {
+  font-size: 1.8rem; font-weight: 900; color: var(--green); text-align: center;
+}
+.flashcard-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ══════════════════════════════════════
+   QUIZ
+══════════════════════════════════════ */
+.quiz-question {
+  background: var(--surface); border-radius: var(--r-xl);
+  padding: 28px 24px; text-align: center; margin-bottom: 20px;
+  border: 3px solid var(--border);
+  box-shadow: 0 4px 0 var(--border2);
+  position: relative;
+}
+.quiz-en {
+  font-family: 'Fredoka One', cursive; font-size: 2.4rem; color: var(--text);
+}
+.quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.option-btn {
+  background: var(--surface);
+  border: 3px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 10px;
+  font-family: 'Nunito', sans-serif; font-weight: 800;
+  font-size: 0.95rem; color: var(--text); cursor: pointer;
+  transition: all 0.1s;
+  box-shadow: 0 4px 0 var(--border2);
+  position: relative; top: 0;
+}
+.option-btn:hover:not(:disabled) {
+  border-color: var(--blue); background: #e8f6ff;
+  transform: none;
+  box-shadow: 0 4px 0 var(--blue-dk);
+}
+.option-btn:active:not(:disabled) { top: 4px; box-shadow: none; }
+.option-btn.correct {
+  background: var(--green-lt); border-color: var(--green);
+  color: var(--green-dk); box-shadow: 0 4px 0 var(--green-dk);
+}
+.option-btn.wrong {
+  background: #ffe0e0; border-color: var(--red);
+  color: var(--red-dk); box-shadow: 0 4px 0 var(--red-dk);
+}
+
+/* ══════════════════════════════════════
+   SPELLING
+══════════════════════════════════════ */
+.spell-question {
+  background: var(--surface); border-radius: var(--r-xl);
+  padding: 20px 24px; margin-bottom: 16px;
+  border: 3px solid var(--border);
+  box-shadow: 0 4px 0 var(--border2);
+  position: relative;
+  min-height: 112px;
+  display: flex; align-items: center; justify-content: center;
+}
+.spell-ja-label {
+  font-size: 0.72rem; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 1.5px;
+  margin-bottom: 6px; font-weight: 800;
+}
+.spell-ja-word {
+  font-family: 'Fredoka One', cursive; font-size: 2.4rem; color: var(--text);
+}
+
+.spell-slots-wrap { margin-bottom: 14px; overflow-x: auto; }
+.spell-slots {
+  display: flex; gap: 6px; justify-content: center;
+  flex-wrap: wrap; min-height: 60px; align-items: center; padding: 4px 0;
+}
+.spell-slot {
+  width: 44px; height: 54px;
+  background: var(--surface);
+  border: 3px solid var(--border2);
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fredoka One', cursive; font-size: 1.5rem; color: var(--text);
+  transition: all 0.15s; cursor: default;
+  box-shadow: 0 3px 0 var(--border2);
+}
+.spell-slot.filled {
+  border-color: var(--blue); background: #e8f6ff;
+  box-shadow: 0 3px 0 var(--blue-dk); cursor: pointer;
+}
+.spell-slot.hint-slot {
+  border-color: var(--yellow); background: var(--yellow-lt);
+  color: #7a6300; box-shadow: 0 3px 0 #c9a900;
+}
+.spell-slot.correct-slot {
+  border-color: var(--green); background: var(--green-lt);
+  color: var(--green-dk); box-shadow: 0 3px 0 var(--green-dk);
+  animation: slotPop 0.3s cubic-bezier(0.34,1.7,0.64,1);
+}
+.spell-slot.wrong-slot {
+  border-color: var(--red); background: #ffe0e0;
+  color: var(--red-dk); box-shadow: 0 3px 0 var(--red-dk);
+  animation: slotShake 0.4s ease;
+}
+@keyframes slotPop { from { transform: scale(0.7); } to { transform: scale(1); } }
+@keyframes slotShake {
+  0%,100%{transform:translateX(0)}
+  20%{transform:translateX(-6px)}
+  40%{transform:translateX(6px)}
+  60%{transform:translateX(-4px)}
+  80%{transform:translateX(4px)}
+}
+
+.hint-btn {
+  background: var(--yellow-lt); border: 2px solid var(--yellow);
+  border-radius: var(--r-full); padding: 8px 18px;
+  font-family: 'Nunito', sans-serif; font-weight: 900;
+  font-size: 0.82rem; color: #7a6300; cursor: pointer;
+  transition: all 0.15s; box-shadow: 0 3px 0 #c9a900;
+  position: relative; top: 0;
+}
+.hint-btn:active { top: 3px; box-shadow: none; }
+.hint-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.spell-keyboard {
+  display: flex; flex-direction: column; gap: 6px;
+  align-items: center; margin-bottom: 14px;
+}
+.kb-row { display: flex; gap: 5px; justify-content: center; }
+.kb-key {
+  width: 34px; height: 46px;
+  background: var(--surface);
+  border: 2px solid var(--border2);
+  border-radius: var(--r-sm);
+  font-family: 'Fredoka One', cursive;
+  font-size: 1rem; color: var(--text); cursor: pointer;
+  box-shadow: 0 3px 0 var(--border2);
+  transition: all 0.1s;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; top: 0;
+}
+.kb-key:active { top: 3px; box-shadow: none; }
+.kb-key.kb-back {
+  width: 52px; font-size: 0.85rem;
+  background: #ffe0e0; border-color: var(--red);
+  box-shadow: 0 3px 0 var(--red-dk); color: var(--red-dk);
+}
+
+.spell-actions { display: flex; gap: 10px; }
+
+/* ── Practice Mode ── */
+
+/* Normal layout: centered label + big word */
+.sq-normal { text-align: center; padding-right: 30px; padding-left: 30px; }
+
+/* Practice layout: hidden by default */
+.sq-practice {
+  display: none; flex-direction: column;
+  align-items: center; gap: 10px; width: 100%;
+}
+.sq-practice.visible { display: flex; }
+
+/* Top row: badge left, Japanese word right */
+.sq-practice-top {
+  display: flex; align-items: center;
+  justify-content: space-between; width: 100%; gap: 8px;
+  padding-right: 34px; /* ⭐ weak-star-btn のスペースを確保 */
+}
+.practice-badge {
+  font-family: 'Fredoka One', cursive;
+  font-size: 0.8rem; color: #7a6300;
+  background: var(--yellow-lt); border: 2px solid var(--yellow);
+  border-radius: var(--r-full); padding: 5px 12px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.sq-practice-word {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.6rem; color: var(--text);
+  text-align: right; line-height: 1.2;
+}
+
+.practice-sub {
+  font-size: 0.72rem; color: #7a6300;
+  font-weight: 800; letter-spacing: 0.3px;
+}
+
+.answer-guide {
+  display: flex; justify-content: center;
+  gap: 5px; flex-wrap: wrap;
+}
+.answer-guide-slot {
+  width: 36px; height: 38px;
+  background: white; border: 2px solid var(--yellow);
+  border-radius: var(--r-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fredoka One', cursive; font-size: 1.1rem;
+  color: #7a6300;
+  box-shadow: 0 2px 0 #c9a900;
+}
+
+/* ══════════════════════════════════════
+   FEEDBACK BANNER  (Duolingo style: bottom slide up)
+══════════════════════════════════════ */
+.feedback-popup {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%) translateY(100%);
+  width: 100%; max-width: 520px;
+  padding: 20px 24px 32px;
+  text-align: center; z-index: 200;
+  pointer-events: none;
+  transition: transform 0.3s cubic-bezier(0.34,1.4,0.64,1);
+  border-radius: 24px 24px 0 0;
+  display: flex; align-items: center; gap: 16px;
+}
+.feedback-popup.show { transform: translateX(-50%) translateY(0); }
+.feedback-popup.correct {
+  background: var(--green-lt);
+  border-top: 3px solid var(--green);
+}
+.feedback-popup.wrong {
+  background: #ffe0e0;
+  border-top: 3px solid var(--red);
+}
+.fb-emoji { font-size: 2rem; flex-shrink: 0; }
+.fb-text {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.2rem;
+  color: var(--text);
+}
+
+/* ══════════════════════════════════════
+   RESULT SCREEN
+══════════════════════════════════════ */
+.result-screen { text-align: center; padding: 16px 0; }
+.result-emoji {
+  font-size: 4.5rem; display: block; margin-bottom: 10px;
+  animation: celebBounce 0.6s ease infinite alternate;
+}
+@keyframes celebBounce {
+  from { transform: translateY(0) rotate(-5deg); }
+  to   { transform: translateY(-12px) rotate(5deg); }
+}
+.result-title {
+  font-family: 'Fredoka One', cursive;
+  font-size: 2.2rem; color: var(--text); margin-bottom: 6px;
+}
+.result-score {
+  font-family: 'Fredoka One', cursive;
+  font-size: 3.5rem; color: var(--orange);
+  text-shadow: 0 4px 0 rgba(255,150,0,0.3);
+  margin: 14px 0;
+}
+.result-stats {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px; margin-bottom: 24px;
+}
+.stat-box {
+  background: var(--surface);
+  border-radius: var(--r);
+  padding: 14px 8px;
+  border: 2px solid var(--border);
+  box-shadow: 0 3px 0 var(--border2);
+}
+.stat-num {
+  font-family: 'Fredoka One', cursive; font-size: 1.8rem; display: block;
+}
+.stat-label {
+  font-size: 0.7rem; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.5px; font-weight: 800;
+}
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ══════════════════════════════════════
+   MANUAL INPUT
+══════════════════════════════════════ */
+.manual-input-area {
+  background: var(--surface); border-radius: var(--r);
+  padding: 14px; margin-bottom: 4px;
+  border: 2px solid var(--border);
+}
+.manual-header {
+  display: grid; grid-template-columns: 1fr 1fr 28px;
+  gap: 8px; margin-bottom: 8px;
+  font-size: 0.72rem; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.8px;
+  padding: 0 4px; font-weight: 800;
+}
+.manual-row {
+  display: grid; grid-template-columns: 1fr 1fr 28px;
+  gap: 8px; margin-bottom: 8px; align-items: center;
+}
+.manual-row input {
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 10px 12px; color: var(--text);
+  font-family: 'Nunito', sans-serif;
+  font-size: 0.9rem; font-weight: 700; outline: none;
+  width: 100%; transition: border-color 0.2s;
+}
+.manual-row input:focus { border-color: var(--blue); }
+.manual-row input.has-value { border-color: var(--green); }
+.del-row-btn {
+  background: none; border: none; color: var(--text2);
+  cursor: pointer; font-size: 1rem; padding: 4px;
+  border-radius: 6px; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center;
+}
+.del-row-btn:hover { color: var(--red); background: #ffe0e0; }
+.add-row-btn {
+  width: 100%; background: none;
+  border: 2px dashed var(--border2);
+  border-radius: var(--r-sm); padding: 10px;
+  color: var(--text2); font-family: 'Nunito', sans-serif;
+  font-weight: 800; font-size: 0.85rem;
+  cursor: pointer; transition: all 0.2s; margin-top: 4px;
+}
+.add-row-btn:hover { border-color: var(--green); color: var(--green); }
+
+/* ══════════════════════════════════════
+   CSV
+══════════════════════════════════════ */
+.csv-info {
+  background: var(--surface); border-radius: var(--r);
+  padding: 14px 16px; margin-bottom: 14px;
+  border: 2px solid var(--border);
+}
+.csv-info h3 { font-size: 0.88rem; font-weight: 900; margin-bottom: 6px; color: var(--text); }
+.csv-format-example {
+  font-family: monospace; background: var(--bg);
+  border-radius: 8px; padding: 8px 12px; margin: 6px 0;
+  font-size: 0.88rem; color: var(--blue);
+  border: 2px solid var(--border);
+}
+.csv-format-note { font-size: 0.76rem; color: var(--text2); font-weight: 700; }
+.csv-preview-label {
+  font-size: 0.82rem; color: var(--green-dk);
+  margin-top: 10px; font-weight: 900; text-align: center;
+}
+
+/* ══════════════════════════════════════
+   PWA BANNER
+══════════════════════════════════════ */
+.pwa-banner {
+  background: #e8f6ff; border: 2px solid var(--blue);
+  border-radius: var(--r); padding: 10px 14px; margin-bottom: 16px;
+  font-size: 0.8rem; color: var(--blue-dk); text-align: center;
+  display: none; font-weight: 800;
+}
+
+/* ══════════════════════════════════════
+   WEAK WORD STAR
+══════════════════════════════════════ */
+.weak-star-btn {
+  position: absolute; top: 8px; right: 10px;
+  background: none; border: none; cursor: pointer;
+  font-size: 1.3rem; padding: 4px; border-radius: 8px;
+  color: var(--border2); transition: all 0.2s; line-height: 1;
+}
+.weak-star-btn:hover { color: var(--yellow); transform: scale(1.25); }
+.weak-star-btn.active { color: var(--yellow); filter: drop-shadow(0 2px 3px rgba(255,217,0,0.5)); }
+
+/* ══════════════════════════════════════
+   DOJO SCREEN
+══════════════════════════════════════ */
+.dojo-header { text-align: center; margin-bottom: 18px; }
+.dojo-header .dojo-icon { font-size: 2.8rem; display: block; animation: popIn 0.5s; }
+.dojo-header .dojo-title {
+  font-family: 'Fredoka One', cursive; font-size: 1.8rem;
+  color: var(--orange); margin: 4px 0 2px;
+  text-shadow: 0 3px 0 rgba(255,150,0,0.3);
+}
+.dojo-header .dojo-sub { font-size: 0.85rem; color: var(--text2); font-weight: 700; }
+
+.dojo-empty {
+  text-align: center; padding: 30px 20px;
+  color: var(--text2); font-size: 0.9rem; line-height: 1.9; font-weight: 700;
+}
+.dojo-empty .de-icon { font-size: 3rem; display: block; margin-bottom: 10px; animation: float 3s infinite; }
+
+.dojo-word-list { margin-bottom: 16px; }
+.dojo-word-item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--surface);
+  border-radius: var(--r-sm); padding: 12px 14px; margin-bottom: 8px;
+  border: 2px solid var(--border);
+  box-shadow: 0 3px 0 var(--border2);
+}
+.dojo-word-item .dwi-words { flex: 1; }
+.dojo-word-item .dwi-en { font-weight: 900; font-size: 0.95rem; color: var(--text); }
+.dojo-word-item .dwi-ja { font-size: 0.8rem; color: var(--text2); margin-top: 1px; font-weight: 700; }
+.dojo-word-item .dwi-miss {
+  font-size: 0.72rem; color: var(--red-dk); font-weight: 900;
+  background: #ffe0e0; border-radius: var(--r-full);
+  padding: 3px 9px; white-space: nowrap;
+  border: 2px solid var(--red);
+}
+.dojo-word-item .dwi-clear {
+  background: var(--green-lt); border: 2px solid var(--green);
+  border-radius: var(--r-full); padding: 6px 12px;
+  color: var(--green-dk); font-size: 0.75rem; font-weight: 900;
+  cursor: pointer; white-space: nowrap; transition: all 0.15s;
+  box-shadow: 0 2px 0 var(--green-dk);
+  position: relative; top: 0;
+}
+.dojo-word-item .dwi-clear:active { top: 2px; box-shadow: none; }
+
+/* Group clear / transition screens inherit .stage-transition */
+.flash-top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+
+/* ── Group Clear ── */
+.gc-screen { text-align: center; padding: 32px 20px; }
+
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">WordHunter 🔍</div>
+    <div class="tagline">英単語をハント！</div>
+  </div>
+  <div class="dojo-nav-wrap" id="dojoNavWrap">
+    <button class="dojo-nav-btn" id="dojoNavBtn" onclick="openDojo()">
+      🥊 練習道場<span class="dojo-count" id="dojoNavCount">0</span>
+    </button>
+  </div>
+
+  <!-- PWA Install Banner -->
+  <div class="pwa-banner" id="pwaBanner">
+    📱 ホーム画面に追加：Safari の <strong>共有ボタン</strong> →「ホーム画面に追加」
+  </div>
+
+  <!-- ━━━ Screen 1: Upload ━━━ -->
+  <div id="screenUpload" class="screen active">
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('manual')">✏️ 手入力</button>
+      <button class="tab-btn" onclick="switchTab('csv')">📄 CSV</button>
+      <button class="tab-btn" onclick="switchTab('demo')">🎮 デモ</button>
+    </div>
+
+    <!-- 手入力タブ -->
+    <div id="tabManual">
+      <div class="manual-input-area">
+        <div class="manual-header">
+          <span>英語</span><span>日本語</span><span></span>
+        </div>
+        <div id="manualRows">
+          <!-- rows injected by JS -->
+        </div>
+        <button class="add-row-btn" onclick="addManualRow()">＋ 単語を追加</button>
+      </div>
+      <button class="btn btn-primary" id="manualStartBtn" onclick="loadManualWords()" disabled>✅ この単語で始める</button>
+    </div>
+
+    <!-- CSVタブ -->
+    <div id="tabCsv" style="display:none;">
+      <div class="csv-info">
+        <div class="csv-format-title">📋 CSVファイルの形式</div>
+        <div class="csv-format-example">apple,りんご<br>school,学校<br>teacher,先生</div>
+        <div class="csv-format-note">1行に「英語,日本語」の形式。ヘッダー行は不要です。</div>
+      </div>
+      <div class="upload-zone" id="csvZone" onclick="document.getElementById('csvFileInput').click()">
+        <span class="upload-icon">📄</span>
+        <h2>CSVファイルを選ぶ</h2>
+        <p>タップして選択またはドロップ</p>
+      </div>
+      <input type="file" id="csvFileInput" accept=".csv,text/csv">
+      <div id="csvPreview" style="display:none;">
+        <div class="csv-preview-label" id="csvPreviewLabel"></div>
+      </div>
+      <button class="btn btn-primary" id="csvStartBtn" onclick="loadCsvWords()" disabled>✅ この単語で始める</button>
+
+      <!-- CSV download template -->
+      <div style="text-align:center;margin-top:12px;">
+        <button class="hint-btn" onclick="downloadCsvTemplate()">⬇️ テンプレートCSVをダウンロード</button>
+      </div>
+    </div>
+
+    <!-- デモタブ -->
+    <div id="tabDemo" style="display:none;">
+      <div class="demo-notice">デモ単語セット（中学1年レベル）でゲームを試せます</div>
+      <button class="btn btn-primary" onclick="loadDemoWords()">🎮 デモで始める</button>
+    </div>
+  </div>
+
+  <!-- ━━━ Screen 2: Loading ━━━ -->
+  <div id="screenLoading" class="screen">
+    <div class="loading">
+      <div class="spinner"></div>
+      <p>画像から単語を解析中...</p>
+    </div>
+  </div>
+
+  <!-- ━━━ Screen 3: Word List ━━━ -->
+  <div id="screenWordList" class="screen">
+    <div class="section-title">単語リスト</div>
+    <div class="badge" id="wordCountBadge">0 語</div>
+
+    <!-- word list with dividers rendered here -->
+    <div class="word-list-wrap" id="wordListWrap"></div>
+
+    <div class="stage-banner">
+      <div class="sb-title">🎮 ゲームの流れ</div>
+      <div class="stages">
+        <div class="stage-pill"><span class="s-icon">🎯</span><div class="s-name">4択クイズ</div></div>
+        <div class="stage-arrow">→</div>
+        <div class="stage-pill"><span class="s-icon">⌨️</span><div class="s-name">スペリング</div></div>
+      </div>
+      <div style="font-size:0.75rem;color:var(--text2);margin-top:8px;">区切りを入れるとステージごとに進みます</div>
+    </div>
+
+    <button class="btn btn-primary" onclick="onGameStartClick()">⚡ ゲームスタート！</button>
+  </div>
+
+  <!-- ━━━ Screen 3b: Stage Select ━━━ -->
+  <div id="screenStageSelect" class="screen">
+    <div class="section-title" style="margin-bottom:4px;">ステージを選ぶ</div>
+    <div style="font-size:0.82rem;color:var(--text2);margin-bottom:18px;">プレイしたいステージを選んでください</div>
+    <div id="stageSelectList" style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px;"></div>
+    <button class="btn btn-neutral" style="width:100%;" onclick="showScreen('screenWordList')">← 単語リストに戻る</button>
+  </div>
+
+  <!-- ━━━ Screen 3c: Stage Clear ━━━ -->
+  <div id="screenGroupClear" class="screen stage-transition">
+    <span class="st-icon" id="gcIcon">🎉</span>
+    <div class="st-title" id="gcTitle">ステージ1 クリア！</div>
+    <div class="st-score" id="gcScore"></div>
+    <div class="st-sub" id="gcSub">次のステージへ進もう</div>
+    <button class="btn btn-primary" style="margin-top:20px;" onclick="startNextGroup()">次のステージへ →</button>
+    <button class="quit-link" onclick="confirmQuit()">🏠 やめてホームへ戻る</button>
+  </div>
+
+  <!-- ━━━ Screen 4: Stage Transition ━━━ -->
+  <div id="screenStageTransition" class="screen stage-transition">
+    <span class="st-icon" id="stIcon">🎯</span>
+    <div class="st-title" id="stTitle">Stage 1</div>
+    <div class="st-sub" id="stSub">英語の意味を4択から選ぼう</div>
+    <div class="st-score" id="stScore"></div>
+    <div class="stage-dots" id="stageDots"></div>
+    <button class="btn btn-primary" id="stBtn" onclick="proceedFromTransition()">スタート！</button>
+    <button class="quit-link" onclick="confirmQuit()">🏠 やめてホームへ戻る</button>
+  </div>
+
+  <!-- ━━━ Screen 6: Quiz ━━━ -->
+  <div id="screenQuiz" class="screen">
+    <div class="progress-bar-wrap"><div class="progress-bar" id="quizProgress"></div></div>
+    <div class="game-meta">
+      <div class="score-badge">⭐ <span id="quizScore">0</span></div>
+      <div class="counter" id="quizCounter">1 / ?</div>
+      <div class="streak-badge" id="quizStreak"></div>
+    </div>
+    <div class="quiz-question" style="position:relative;">
+      <div style="font-size:0.82rem;color:var(--text2);margin-bottom:8px;font-weight:800;">この単語の意味は？</div>
+      <div class="quiz-en" id="quizWord"></div>
+      <button class="weak-star-btn" id="quizWeakBtn" onclick="toggleWeak('quiz', event)" title="苦手に追加">⭐</button>
+    </div>
+    <div class="quiz-options" id="quizOptions"></div>
+    <button class="quit-link" onclick="confirmQuit()">🏠 中断してホームへ戻る</button>
+  </div>
+
+  <!-- ━━━ Screen 7: Spelling ━━━ -->
+  <div id="screenSpell" class="screen">
+    <div class="progress-bar-wrap"><div class="progress-bar" id="spellProgress"></div></div>
+    <div class="game-meta">
+      <div class="score-badge">⭐ <span id="spellScore">0</span></div>
+      <div class="counter" id="spellCounter">1 / ?</div>
+      <div class="streak-badge" id="spellStreak"></div>
+    </div>
+
+    <div class="spell-question" id="spellQuestion">
+      <!-- 通常モード: ラベル＋大きい日本語 -->
+      <div class="sq-normal" id="sqNormal">
+        <div class="spell-ja-label" id="spellJaLabel">日本語</div>
+        <div class="spell-ja-word" id="spellJaWord"></div>
+      </div>
+      <!-- 練習モード: バッジ左／日本語右／答えタイル -->
+      <div class="sq-practice" id="sqPractice">
+        <div class="sq-practice-top">
+          <span class="practice-badge">👀 見ながら練習！</span>
+          <span class="sq-practice-word" id="sqPracticeWord"></span>
+        </div>
+        <div class="answer-guide" id="answerGuide"></div>
+        <div class="practice-sub">スペルを見ながら入力しよう</div>
+      </div>
+      <button class="weak-star-btn" id="spellWeakBtn" onclick="toggleWeak('spell', event)" title="苦手に追加">⭐</button>
+    </div>
+
+    <div class="spell-slots-wrap">
+      <div class="spell-slots" id="spellSlots"></div>
+    </div>
+    <div style="text-align:center;margin-bottom:12px;">
+      <button class="hint-btn" id="hintBtn" onclick="useHint()">💡 ヒント（最初の文字）</button>
+    </div>
+    <div class="spell-keyboard" id="spellKeyboard"></div>
+    <div class="spell-actions">
+      <button class="btn btn-danger" style="flex:1;" id="spellSkipBtn" onclick="spellSkip()">⏭ スキップ</button>
+      <button class="btn btn-success" style="flex:1;" id="spellSubmitBtn" onclick="spellSubmit()" disabled>✅ 確認</button>
+    </div>
+    <button class="quit-link" onclick="confirmQuit()">🏠 中断してホームへ戻る</button>
+  </div>
+
+  <!-- ━━━ Screen 8: Result ━━━ -->
+  <div id="screenResult" class="screen result-screen">
+    <span class="result-emoji" id="resultEmoji">🎉</span>
+    <div class="result-title" id="resultTitle">ゲームクリア！</div>
+    <div class="result-score" id="resultScore">0点</div>
+    <div class="result-stats">
+      <div class="stat-box">
+        <span class="stat-num" id="statCorrect" style="color:var(--accent3)">0</span>
+        <span class="stat-label">正解</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-num" id="statWrong" style="color:var(--accent)">0</span>
+        <span class="stat-label">ミス</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-num" id="statStreak" style="color:var(--accent2)">0</span>
+        <span class="stat-label">最高連続</span>
+      </div>
+    </div>
+    <!-- Weak words summary in result -->
+    <div id="resultWeakSummary" style="display:none;margin:14px 0 6px;">
+      <div style="font-size:0.8rem;color:#ffd700;font-weight:700;margin-bottom:6px;">⭐ 練習道場にストック中</div>
+      <div id="resultWeakList" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-success" onclick="replayGame()">🔄 もう一回</button>
+      <button class="btn btn-neutral" onclick="goHome()">🏠 ホーム</button>
+    </div>
+    <button id="resultDojoBtn" class="btn" onclick="openDojo()"
+      style="display:none;width:100%;margin-top:10px;background:rgba(255,215,0,0.15);border:1px solid rgba(255,215,0,0.4);color:#ffd700;font-weight:800;">
+      🥊 練習道場で復習する
+    </button>
+  </div>
+
+  <!-- ━━━ Screen 9: Dojo ━━━ -->
+  <div id="screenDojo" class="screen">
+    <div class="dojo-header">
+      <span class="dojo-icon">🥊</span>
+      <div class="dojo-title">練習道場</div>
+      <div class="dojo-sub">苦手な単語を集中トレーニング</div>
+    </div>
+
+    <div id="dojoEmpty" class="dojo-empty">
+      <span class="de-icon">🌟</span>
+      苦手単語がありません！<br>
+      ゲーム中に間違えた単語や<br>⭐ボタンを押した単語がここに貯まります。
+    </div>
+
+    <div id="dojoWordList" class="dojo-word-list" style="display:none;"></div>
+
+    <div id="dojoActions" style="display:none;">
+      <button class="btn btn-primary" onclick="startDojoGame()" style="width:100%;margin-bottom:10px;">
+        ⚡ 道場ゲームスタート！
+      </button>
+      <button class="btn btn-neutral" onclick="goBack()" style="width:100%;">← 戻る</button>
+    </div>
+    <div id="dojoBackOnly" style="display:none;">
+      <button class="btn btn-neutral" onclick="goBack()" style="width:100%;">← 戻る</button>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<!-- Quit Confirm Modal -->
+<div class="quit-modal-bg" id="quitModalBg">
+  <div class="quit-modal">
+    <span class="quit-modal-icon">🏠</span>
+    <div class="quit-modal-title">やめますか？</div>
+    <div class="quit-modal-sub">進捗は保存されません</div>
+    <div class="quit-modal-btns">
+      <button class="btn btn-neutral" onclick="closeQuitModal()">続ける</button>
+      <button class="btn btn-danger" onclick="doQuit()">やめる</button>
+    </div>
+  </div>
+</div>
+
+<!-- Feedback Popup -->
+<div class="feedback-popup" id="feedbackPopup">
+  <span class="fb-emoji" id="fbEmoji"></span>
+  <div class="fb-text" id="fbText"></div>
+</div>
+
+<script>
+// ════════════════════════════════
+// State
+// ════════════════════════════════
+let words = [];
+let gameWords = [];
+
+// ── Weak Words (練習道場) ──────────
+// Map: en (lowercase) → { en, ja, missCount, addedManually }
+let weakWords = new Map();
+let prevScreen = 'screenUpload';  // for goBack()
+let isDojoMode = false;           // true when playing dojo game
+
+// Stage system: 0=quiz, 1=spell
+const STAGES = [
+  { id: 'quiz',  name: '4択クイズ',       icon: '🎯', screen: 'screenQuiz'  },
+  { id: 'spell', name: 'スペリング入力',   icon: '⌨️', screen: 'screenSpell' },
+];
+let currentStage = 0;
+
+// Per-round state (reset each stage)
+let currentIndex = 0;
+let score = 0;       // cumulative across all stages
+let stageScore = 0;  // this stage only
+let correct = 0;
+let wrong = 0;
+let streak = 0;
+let maxStreak = 0;
+
+// Spelling
+const KB_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+let spellInput = [];
+let spellAnswer = '';
+let hintUsed = false;
+let spellLocked = false;
+let isPracticeMode = false;  // true = 見ながら練習モード
+
+const DEMO_WORDS = [
+  {en:'apple',ja:'りんご'},{en:'school',ja:'学校'},{en:'teacher',ja:'先生'},
+  {en:'friend',ja:'友達'},{en:'beautiful',ja:'美しい'},{en:'study',ja:'勉強する'},
+  {en:'important',ja:'大切な'},{en:'yesterday',ja:'昨日'},{en:'mountain',ja:'山'},
+  {en:'library',ja:'図書館'},{en:'breakfast',ja:'朝食'},{en:'practice',ja:'練習する'},
+  {en:'summer',ja:'夏'},{en:'notebook',ja:'ノート'},{en:'listen',ja:'聞く'},
+];
+
+const correctMsgs = ['すごい！🌟','パーフェクト！✨','やった！🎊','その調子！🔥','天才！🧠','完璧！👑','ナイス！⚡'];
+const wrongMsgs = ['惜しい！もう一度💪','ファイト！🥊','次は絶対できる！🎯','一緒にがんばろう！🌈'];
+
+// ════════════════════════════════
+// PWA
+// ════════════════════════════════
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+// Show PWA install banner on iOS Safari (not yet added to home screen)
+const isIOS = /ipad|iphone|ipod/i.test(navigator.userAgent);
+const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+if (isIOS && !isStandalone) {
+  document.getElementById('pwaBanner').style.display = 'block';
+}
+
+// ════════════════════════════════
+// Upload / Tab
+// ════════════════════════════════
+const TAB_IDS = { manual:'tabManual', csv:'tabCsv', demo:'tabDemo' };
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  const tabs = ['manual','csv','demo'];
+  const idx = tabs.indexOf(tab);
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+  Object.values(TAB_IDS).forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  const target = document.getElementById(TAB_IDS[tab]);
+  if (target) target.style.display = 'block';
+}
+
+// ── Manual Input ──
+let manualRowCount = 0;
+let csvParsed = [];
+
+function initManualRows() {
+  for (let i = 0; i < 5; i++) addManualRow();
+}
+
+function addManualRow() {
+  const id = manualRowCount++;
+  const container = document.getElementById('manualRows');
+  const row = document.createElement('div');
+  row.className = 'manual-row';
+  row.id = 'mrow-' + id;
+  row.innerHTML = `
+    <input type="text" placeholder="apple" id="men-${id}" oninput="onManualInput()" autocapitalize="none" autocorrect="off" spellcheck="false">
+    <input type="text" placeholder="りんご" id="mja-${id}" oninput="onManualInput()">
+    <button class="del-row-btn" onclick="removeManualRow('mrow-${id}')">🗑</button>
+  `;
+  container.appendChild(row);
+}
+
+function removeManualRow(rowId) {
+  const el = document.getElementById(rowId);
+  if (el) el.remove();
+  onManualInput();
+}
+
+function onManualInput() {
+  const pairs = getManualPairs();
+  document.getElementById('manualStartBtn').disabled = pairs.length < 4;
+}
+
+function getManualPairs() {
+  const rows = document.querySelectorAll('.manual-row');
+  const pairs = [];
+  rows.forEach(row => {
+    const inputs = row.querySelectorAll('input');
+    const en = inputs[0].value.trim().toLowerCase();
+    const ja = inputs[1].value.trim();
+    if (en && ja) pairs.push({ en, ja });
+  });
+  return pairs;
+}
+
+function loadManualWords() {
+  const pairs = getManualPairs();
+  if (pairs.length < 4) { alert('最低4語入力してください'); return; }
+  words = pairs; dividers = new Set();
+  renderWordList(); showScreen('screenWordList');
+}
+
+// ── CSV ──
+document.addEventListener('DOMContentLoaded', () => {
+  initManualRows();
+
+  const csvInput = document.getElementById('csvFileInput');
+  if (csvInput) {
+    csvInput.addEventListener('change', e => {
+      const file = e.target.files[0]; if (!file) return;
+      readCsvFile(file);
+    });
+  }
+
+  // CSV drag & drop
+  const csvZone = document.getElementById('csvZone');
+  if (csvZone) {
+    csvZone.addEventListener('dragover', e => { e.preventDefault(); csvZone.classList.add('drag-over'); });
+    csvZone.addEventListener('dragleave', () => csvZone.classList.remove('drag-over'));
+    csvZone.addEventListener('drop', e => {
+      e.preventDefault(); csvZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file) readCsvFile(file);
+    });
+  }
+});
+
+function readCsvFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    csvParsed = [];
+    const errors = [];
+    lines.forEach((line, i) => {
+      const parts = line.split(',');
+      if (parts.length >= 2) {
+        const en = parts[0].trim().toLowerCase();
+        const ja = parts[1].trim();
+        if (en && ja) csvParsed.push({ en, ja });
+        else errors.push(i + 1);
+      } else {
+        errors.push(i + 1);
+      }
+    });
+    const preview = document.getElementById('csvPreview');
+    const label = document.getElementById('csvPreviewLabel');
+    preview.style.display = 'block';
+    if (csvParsed.length > 0) {
+      label.textContent = `✅ ${csvParsed.length}語 読み込みました` + (errors.length ? `（${errors.length}行スキップ）` : '');
+      label.style.color = 'var(--accent3)';
+      document.getElementById('csvStartBtn').disabled = csvParsed.length < 4;
+    } else {
+      label.textContent = '❌ 読み込める単語がありませんでした。形式を確認してください。';
+      label.style.color = 'var(--accent)';
+      document.getElementById('csvStartBtn').disabled = true;
+    }
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function loadCsvWords() {
+  if (csvParsed.length < 4) { alert('最低4語必要です'); return; }
+  words = csvParsed; dividers = new Set();
+  renderWordList(); showScreen('screenWordList');
+}
+
+function downloadCsvTemplate() {
+  const sample = 'apple,りんご\nschool,学校\nteacher,先生\nfriend,友達\nbeautiful,美しい\nstudy,勉強する\n';
+  const blob = new Blob([sample], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'wordhunter_template.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+function loadDemoWords() {
+  words = [...DEMO_WORDS]; dividers = new Set(); renderWordList(); showScreen('screenWordList');
+}
+
+// ════════════════════════════════
+// Word List
+// ════════════════════════════════
+// dividers: Set of word indices AFTER which a divider is placed
+// e.g. dividers = new Set([3]) means divider after words[3]
+let dividers = new Set();
+
+function renderWordList() {
+  const wrap = document.getElementById('wordListWrap');
+  wrap.innerHTML = '';
+  document.getElementById('wordCountBadge').textContent = words.length + ' 語';
+
+  // Build sorted divider list
+  const dividerSet = dividers;
+
+  // Group label tracking
+  const sortedDividers = [...dividerSet].sort((a, b) => a - b);
+  let groupNum = 1;
+
+  // Render words 2 per row; divider buttons appear BETWEEN rows
+  // A divider "after index i" sits between the row containing i and the next row.
+  // Row r contains words[r*2] and words[r*2+1] (if exists).
+  // Divider after word i belongs after row floor(i/2), but only if i is the LAST word in that row.
+  // We simplify: show divider button after each row (between row r and row r+1),
+  // keyed to the last word index in row r.
+
+  const totalRows = Math.ceil(words.length / 2);
+
+  // Group label at top
+  const addGroupLabel = (gn) => {
+    if (dividerSet.size === 0) return;
+    const label = document.createElement('div');
+    label.className = 'group-label';
+    label.textContent = `グループ ${gn}`;
+    wrap.appendChild(label);
+  };
+
+  addGroupLabel(groupNum);
+
+  for (let r = 0; r < totalRows; r++) {
+    const leftIdx = r * 2;
+    const rightIdx = r * 2 + 1;
+    const lastIdxInRow = rightIdx < words.length ? rightIdx : leftIdx;
+
+    // Check if a divider falls within this row (after leftIdx or rightIdx)
+    // We show the divider line after this row if any divider index is in [leftIdx, lastIdxInRow]
+    const hasDividerAfterRow = [...dividerSet].some(d => d >= leftIdx && d <= lastIdxInRow);
+
+    // Row of chips
+    const row = document.createElement('div');
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0;';
+
+    [leftIdx, rightIdx].forEach(idx => {
+      if (idx >= words.length) return;
+      const w = words[idx];
+      const chip = document.createElement('div');
+      chip.className = 'word-chip selected';
+      chip.dataset.index = idx;
+      chip.innerHTML = `
+        <button class="remove-btn" onclick="removeWord(${idx},event)">✕</button>
+        <span class="en">${w.en}</span>
+        <span class="ja">${w.ja}</span>
+      `;
+      chip.onclick = e => {
+        if (e.target.classList.contains('remove-btn')) return;
+        chip.classList.toggle('selected');
+      };
+      row.appendChild(chip);
+    });
+    wrap.appendChild(row);
+
+    // After this row: single toggle button (adds or removes divider)
+    if (r < totalRows - 1) {
+      const dbtn = document.createElement('div');
+      if (hasDividerAfterRow) {
+        groupNum++;
+        dbtn.className = 'divider-btn-wrap active-divider';
+        dbtn.innerHTML = `
+          <div class="d-line d-line-active"></div>
+          <button class="d-btn d-btn-active" onclick="removeDividerRow(${r}, event)">📌 グループ${groupNum}の区切り ✕ 解除</button>
+          <div class="d-line d-line-active"></div>
+        `;
+      } else {
+        dbtn.className = 'divider-btn-wrap';
+        dbtn.innerHTML = `
+          <div class="d-line"></div>
+          <button class="d-btn" onclick="addDividerRow(${r}, event)">＋ ここで区切る</button>
+          <div class="d-line"></div>
+        `;
+      }
+      wrap.appendChild(dbtn);
+    }
+  }
+}
+
+// Row r contains words[r*2] and words[r*2+1].
+// "Divider after row r" = divider after the last word index in that row.
+function addDividerRow(row, e) {
+  e.stopPropagation();
+  const rightIdx = row * 2 + 1;
+  const lastIdx = rightIdx < words.length ? rightIdx : row * 2;
+  dividers.add(lastIdx);
+  renderWordList();
+}
+
+function removeDividerRow(row, e) {
+  e.stopPropagation();
+  const leftIdx = row * 2;
+  const rightIdx = row * 2 + 1;
+  // Collect keys first to avoid mutating Set during iteration
+  const toDelete = [...dividers].filter(d => d >= leftIdx && d <= rightIdx);
+  toDelete.forEach(d => dividers.delete(d));
+  renderWordList();
+}
+
+function addDivider(afterIndex, e) {
+  e.stopPropagation();
+  dividers.add(afterIndex);
+  renderWordList();
+}
+
+function removeDivider(afterIndex, e) {
+  e.stopPropagation();
+  dividers.delete(afterIndex);
+  renderWordList();
+}
+
+function removeWord(index, e) {
+  e.stopPropagation();
+  // Shift dividers that come after removed word
+  const newDividers = new Set();
+  dividers.forEach(d => {
+    if (d < index) newDividers.add(d);
+    else if (d > index) newDividers.add(d - 1);
+    // d === index: divider was after this word, drop it
+  });
+  dividers = newDividers;
+  words.splice(index, 1);
+  renderWordList();
+}
+
+// ════════════════════════════════
+// Game Start & Stage System
+// ════════════════════════════════
+let wordGroups = [];   // array of word arrays, one per group
+let currentGroup = 0;
+let singleStageMode = false;  // true = 1ステージだけプレイ中
+
+function buildWordGroups() {
+  // Collect selected words maintaining order
+  const chips = document.querySelectorAll('#wordListWrap .word-chip.selected');
+  const selected = Array.from(chips).map(c => words[parseInt(c.dataset.index)]).filter(Boolean);
+
+  // Split by dividers (dividers are indices into words[], not selected[])
+  // Easier: rebuild groups from words[] order + dividers, then filter selected
+  const selectedIndices = new Set(
+    Array.from(chips).map(c => parseInt(c.dataset.index))
+  );
+
+  const groups = [];
+  let current = [];
+  words.forEach((w, i) => {
+    if (selectedIndices.has(i)) current.push(w);
+    if (dividers.has(i) && current.length > 0) {
+      groups.push(current);
+      current = [];
+    }
+  });
+  if (current.length > 0) groups.push(current);
+  return groups.filter(g => g.length > 0);
+}
+
+function onGameStartClick() {
+  wordGroups = buildWordGroups();
+  if (wordGroups.length === 0 || wordGroups.every(g => g.length === 0)) {
+    alert('最低2語選んでください'); return;
+  }
+  // Validate: each group needs ≥2 words
+  const small = wordGroups.findIndex(g => g.length < 2);
+  if (small !== -1) {
+    alert(`グループ${small + 1}の単語が${wordGroups[small].length}語です。各グループ最低2語必要です。`);
+    return;
+  }
+
+  if (wordGroups.length === 1) {
+    currentGroup = 0;
+    score = 0; correct = 0; wrong = 0; maxStreak = 0;
+    startGroup();
+  } else {
+    showStageSelectScreen();
+  }
+}
+
+function showStageSelectScreen() {
+  const list = document.getElementById('stageSelectList');
+  list.innerHTML = '';
+
+  const allBtn = document.createElement('button');
+  allBtn.className = 'btn btn-primary';
+  allBtn.style.cssText = 'margin-top:0;font-size:1rem;';
+  allBtn.innerHTML = `🚀 全グループ順番にプレイ（${wordGroups.length}グループ）`;
+  allBtn.onclick = () => {
+    currentGroup = 0;
+    score = 0; correct = 0; wrong = 0; maxStreak = 0;
+    startGroup();
+  };
+  list.appendChild(allBtn);
+
+  const sep = document.createElement('div');
+  sep.style.cssText = 'text-align:center;color:var(--text2);font-size:0.82rem;padding:8px 0;font-weight:700;';
+  sep.textContent = '── または特定のグループだけプレイ ──';
+  list.appendChild(sep);
+
+  wordGroups.forEach((g, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-neutral';
+    btn.style.cssText = 'width:100%;display:flex;align-items:center;justify-content:space-between;font-size:0.95rem;margin-top:0;';
+    btn.innerHTML = `
+      <span>📚 グループ ${i + 1}</span>
+      <span style="font-size:0.82rem;color:var(--text2);font-weight:700;">${g.length} 語</span>
+    `;
+    btn.onclick = () => {
+      currentGroup = i;
+      singleStageMode = true;
+      score = 0; correct = 0; wrong = 0; maxStreak = 0;
+      startGroup();
+    };
+    list.appendChild(btn);
+  });
+
+  showScreen('screenStageSelect');
+}
+
+function startGame() {
+  // legacy / called internally
+  onGameStartClick();
+}
+
+function startGroup() {
+  gameWords = [...wordGroups[currentGroup]];
+  gameWords.sort(() => Math.random() - 0.5);
+  currentStage = 0;
+  showStageTransition(true);
+}
+
+function startNextGroup() {
+  singleStageMode = false;
+  currentGroup++;
+  if (currentGroup >= wordGroups.length) {
+    showResult();
+  } else {
+    startGroup();
+  }
+}
+
+function showStageTransition(isFirst) {
+  const stage = STAGES[currentStage];
+  document.getElementById('stIcon').textContent = stage.icon;
+
+  // Show word-stage label if multiple stages
+  const stageLabel = wordGroups.length > 1 ? `【ステージ ${currentGroup + 1}】` : '';
+  document.getElementById('stTitle').textContent = `${stageLabel}${stage.name}`;
+
+  const descs = [
+    '英語の意味を4択から選ぼう',
+    '日本語を見て英語をスペリングしよう',
+  ];
+  document.getElementById('stSub').textContent = descs[currentStage];
+  document.getElementById('stScore').textContent = isFirst ? '' : `ここまでの合計：${score}点`;
+  document.getElementById('stBtn').textContent = isFirst ? 'スタート！' : '次のモードへ！';
+
+  // Stage dots (game modes)
+  const dots = document.getElementById('stageDots');
+  dots.innerHTML = '';
+  STAGES.forEach((s, i) => {
+    const d = document.createElement('div');
+    d.className = 'stage-dot ' + (i < currentStage ? 'done' : i === currentStage ? 'current' : 'upcoming');
+    d.textContent = i < currentStage ? '✓' : s.icon;
+    dots.appendChild(d);
+  });
+
+  showScreen('screenStageTransition');
+}
+
+function proceedFromTransition() {
+  const stage = STAGES[currentStage];
+  currentIndex = 0; stageScore = 0; streak = 0;
+  if (stage.id === 'quiz') { showQuizQuestion(); showScreen('screenQuiz'); }
+  else { initSpellGame(); showScreen('screenSpell'); }
+}
+
+function advanceStage() {
+  currentStage++;
+  if (currentStage >= STAGES.length) {
+    // This group is done
+    if (!singleStageMode && wordGroups.length > 1 && currentGroup < wordGroups.length - 1) {
+      // Show stage clear screen
+      const gn = currentGroup + 1;
+      const totalGroups = wordGroups.length;
+      document.getElementById('gcIcon').textContent = '🎉';
+      document.getElementById('gcTitle').textContent = `ステージ ${gn} クリア！`;
+      document.getElementById('gcScore').textContent = `現在の得点：${score}点`;
+      document.getElementById('gcSub').textContent = `ステージ ${gn + 1} / ${totalGroups} へ進もう`;
+      showScreen('screenGroupClear');
+    } else {
+      showResult();
+    }
+  } else {
+    showStageTransition(false);
+  }
+}
+
+// ════════════════════════════════
+// Quiz
+// ════════════════════════════════
+function showQuizQuestion() {
+  if (currentIndex >= gameWords.length) { advanceStage(); return; }
+  const w = gameWords[currentIndex];
+  updateMeta('quiz');
+  document.getElementById('quizWord').textContent = w.en;
+  updateWeakStarUI('quiz');
+
+  const opts = [w];
+  const others = gameWords.filter((_,i) => i !== currentIndex);
+  while (opts.length < 4 && others.length > 0) {
+    opts.push(others.splice(Math.floor(Math.random()*others.length), 1)[0]);
+  }
+  opts.sort(() => Math.random() - 0.5);
+
+  const container = document.getElementById('quizOptions');
+  container.innerHTML = '';
+  opts.forEach(o => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn'; btn.textContent = o.ja;
+    btn.onclick = () => quizAnswer(btn, o.ja === w.ja, container);
+    container.appendChild(btn);
+  });
+}
+
+function quizAnswer(btn, isCorrect, container) {
+  container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+  if (isCorrect) {
+    btn.classList.add('correct');
+    const pts = 10; score += pts; stageScore += pts; correct++;
+    streak++; maxStreak = Math.max(maxStreak, streak);
+    showFeedback(true);
+  } else {
+    btn.classList.add('wrong');
+    container.querySelectorAll('.option-btn').forEach(b => {
+      if (b.textContent === gameWords[currentIndex].ja) b.classList.add('correct');
+    });
+    addWeakWord(gameWords[currentIndex]);
+    wrong++; streak = 0; showFeedback(false);
+  }
+  currentIndex++;
+  setTimeout(showQuizQuestion, 900);
+}
+
+// ════════════════════════════════
+// Spelling
+// ════════════════════════════════
+function initSpellGame() {
+  currentIndex = 0; stageScore = 0; streak = 0; isPracticeMode = false;
+  showSpellQuestion();
+}
+
+function showSpellQuestion() {
+  if (currentIndex >= gameWords.length) { advanceStage(); return; }
+  const w = gameWords[currentIndex];
+  spellAnswer = w.en.toLowerCase();
+  spellInput = []; hintUsed = false; spellLocked = false;
+  // isPracticeMode is set by caller — don't reset here
+  updateMeta('spell');
+  document.getElementById('spellJaWord').textContent = w.ja;
+  document.getElementById('hintBtn').disabled = false;
+  document.getElementById('spellSubmitBtn').disabled = true;
+  updateWeakStarUI('spell');
+
+  // Practice mode UI
+  const sqNormal   = document.getElementById('sqNormal');
+  const sqPractice = document.getElementById('sqPractice');
+  const practiceWord = document.getElementById('sqPracticeWord');
+  const guide      = document.getElementById('answerGuide');
+  const skipBtn    = document.getElementById('spellSkipBtn');
+  const hintBtn    = document.getElementById('hintBtn');
+
+  if (isPracticeMode) {
+    // 練習モード: バッジ＋日本語右＋答えタイル表示
+    sqNormal.style.display = 'none';
+    practiceWord.textContent = w.ja;
+    guide.innerHTML = '';
+    for (const ch of spellAnswer) {
+      const s = document.createElement('div');
+      s.className = 'answer-guide-slot';
+      s.textContent = ch.toUpperCase();
+      guide.appendChild(s);
+    }
+    sqPractice.classList.add('visible');
+    skipBtn.style.display = 'none';
+    hintBtn.style.display = 'none';
+  } else {
+    // 通常モード: 大きい日本語を中央表示
+    sqPractice.classList.remove('visible');
+    sqNormal.style.display = '';
+    skipBtn.style.display = '';
+    hintBtn.style.display = '';
+  }
+
+  renderSpellSlots(); renderKeyboard();
+}
+
+function renderSpellSlots() {
+  const container = document.getElementById('spellSlots');
+  container.innerHTML = '';
+  for (let i = 0; i < spellAnswer.length; i++) {
+    const slot = document.createElement('div');
+    slot.className = 'spell-slot'; slot.id = 'slot-' + i;
+    if (i === 0 && hintUsed) {
+      slot.classList.add('hint-slot');
+      slot.textContent = spellAnswer[0].toUpperCase();
+    } else if (spellInput[i]) {
+      slot.classList.add('filled');
+      slot.textContent = spellInput[i].toUpperCase();
+      slot.onclick = () => deleteUpTo(i);
+    }
+    container.appendChild(slot);
+  }
+  const startIdx = hintUsed ? 1 : 0;
+  const filled = spellInput.slice(startIdx).filter(Boolean).length;
+  const needed = spellAnswer.length - startIdx;
+  document.getElementById('spellSubmitBtn').disabled = filled < needed;
+}
+
+function renderKeyboard() {
+  const container = document.getElementById('spellKeyboard');
+  container.innerHTML = '';
+  KB_ROWS.forEach((row, ri) => {
+    const rowDiv = document.createElement('div');
+    rowDiv.className = 'kb-row';
+    row.split('').forEach(ch => {
+      const key = document.createElement('button');
+      key.className = 'kb-key'; key.id = 'key-' + ch;
+      key.textContent = ch.toUpperCase();
+      key.onclick = () => typeKey(ch);
+      rowDiv.appendChild(key);
+    });
+    if (ri === 2) {
+      const back = document.createElement('button');
+      back.className = 'kb-key kb-back'; back.textContent = '⌫';
+      back.onclick = deleteLast;
+      rowDiv.appendChild(back);
+    }
+    container.appendChild(rowDiv);
+  });
+}
+
+function typeKey(ch) {
+  if (spellLocked) return;
+  const startIdx = hintUsed ? 1 : 0;
+  let nextEmpty = -1;
+  for (let i = startIdx; i < spellAnswer.length; i++) {
+    if (!spellInput[i]) { nextEmpty = i; break; }
+  }
+  if (nextEmpty === -1) return;
+  spellInput[nextEmpty] = ch; renderSpellSlots();
+}
+
+function deleteLast() {
+  if (spellLocked) return;
+  const startIdx = hintUsed ? 1 : 0;
+  for (let i = spellAnswer.length - 1; i >= startIdx; i--) {
+    if (spellInput[i]) { spellInput[i] = null; break; }
+  }
+  renderSpellSlots();
+}
+
+function deleteUpTo(i) {
+  if (spellLocked) return;
+  if (i < (hintUsed ? 1 : 0)) return;
+  spellInput[i] = null; renderSpellSlots();
+}
+
+function useHint() {
+  hintUsed = true; spellInput[0] = spellAnswer[0];
+  document.getElementById('hintBtn').disabled = true;
+  renderSpellSlots();
+}
+
+function spellSubmit() {
+  if (spellLocked) return; spellLocked = true;
+  let typed = '';
+  for (let i = 0; i < spellAnswer.length; i++) typed += (spellInput[i] || '');
+  const isCorrect = typed.toLowerCase() === spellAnswer;
+
+  for (let i = 0; i < spellAnswer.length; i++) {
+    const slot = document.getElementById('slot-' + i);
+    if (!slot) continue;
+    slot.classList.remove('filled','hint-slot');
+    if (isCorrect) {
+      slot.classList.add('correct-slot');
+    } else {
+      const ok = (spellInput[i]||'').toLowerCase() === spellAnswer[i];
+      slot.classList.add(ok ? 'correct-slot' : 'wrong-slot');
+    }
+    slot.textContent = spellAnswer[i].toUpperCase();
+  }
+
+  if (isPracticeMode) {
+    // 練習モード：正解なら次へ、不正解ならリセットして再入力
+    if (isCorrect) {
+      showFeedback(true);
+      isPracticeMode = false;
+      currentIndex++;  // advance to next word
+      setTimeout(showSpellQuestion, 900);
+    } else {
+      showFeedback(false);
+      // Reset slots after short delay so they can see the mistake
+      setTimeout(() => {
+        spellInput = []; spellLocked = false;
+        renderSpellSlots();
+        document.getElementById('spellSubmitBtn').disabled = true;
+      }, 900);
+    }
+  } else {
+    // 通常モード
+    if (isCorrect) {
+      const pts = hintUsed ? 5 : 10;
+      score += pts; stageScore += pts; correct++;
+      streak++; maxStreak = Math.max(maxStreak, streak);
+      showFeedback(true);
+      currentIndex++;
+      isPracticeMode = false;
+      setTimeout(showSpellQuestion, 900);
+    } else {
+      addWeakWord(gameWords[currentIndex]);
+      wrong++; streak = 0; showFeedback(false);
+      document.getElementById('spellScore').textContent = score;
+      document.getElementById('spellStreak').textContent = '';
+      // 練習モードに移行（同じ単語でもう一度）
+      isPracticeMode = true;
+      setTimeout(() => {
+        spellInput = []; spellLocked = false; hintUsed = false;
+        showSpellQuestion();
+      }, 1200);
+    }
+  }
+
+  document.getElementById('spellScore').textContent = score;
+  document.getElementById('spellStreak').textContent = streak > 1 ? '🔥 '+streak+'連続！' : '';
+}
+
+function spellSkip() {
+  if (spellLocked) return; spellLocked = true;
+  // Show correct answer in slots
+  for (let i = 0; i < spellAnswer.length; i++) {
+    const slot = document.getElementById('slot-' + i);
+    if (slot) {
+      slot.classList.remove('filled','hint-slot');
+      slot.classList.add('wrong-slot');
+      slot.textContent = spellAnswer[i].toUpperCase();
+    }
+  }
+  addWeakWord(gameWords[currentIndex]);
+  wrong++; streak = 0;
+  document.getElementById('spellStreak').textContent = '';
+  // Enter practice mode without incrementing index
+  isPracticeMode = true;
+  setTimeout(() => {
+    spellInput = []; spellLocked = false; hintUsed = false;
+    showSpellQuestion();
+  }, 1200);
+}
+
+document.addEventListener('keydown', e => {
+  const active = document.querySelector('.screen.active');
+  if (!active || active.id !== 'screenSpell') return;
+  if (e.key === 'Backspace') { deleteLast(); return; }
+  if (e.key === 'Enter' && !document.getElementById('spellSubmitBtn').disabled) { spellSubmit(); return; }
+  if (/^[a-zA-Z]$/.test(e.key)) typeKey(e.key.toLowerCase());
+});
+
+// ════════════════════════════════
+// Result
+// ════════════════════════════════
+function showResult() {
+  const total = gameWords.length * STAGES.length;
+  const pct = Math.round(correct / (correct + wrong) * 100) || 0;
+  let emoji = '😅', title = 'もう少し！';
+  if (pct >= 90) { emoji = '🏆'; title = '完璧！最高！'; }
+  else if (pct >= 70) { emoji = '🎉'; title = 'よくできました！'; }
+  else if (pct >= 50) { emoji = '💪'; title = 'いい感じ！'; }
+  document.getElementById('resultEmoji').textContent = emoji;
+  document.getElementById('resultTitle').textContent = title;
+  document.getElementById('resultScore').textContent = score + '点';
+  document.getElementById('statCorrect').textContent = correct;
+  document.getElementById('statWrong').textContent = wrong;
+  document.getElementById('statStreak').textContent = maxStreak;
+
+  // Weak words summary
+  const weakArr = [...weakWords.values()];
+  const summaryEl = document.getElementById('resultWeakSummary');
+  const listEl = document.getElementById('resultWeakList');
+  const dojoBtn = document.getElementById('resultDojoBtn');
+  if (weakArr.length > 0) {
+    summaryEl.style.display = 'block';
+    listEl.innerHTML = weakArr.slice(0, 10).map(w =>
+      `<span style="background:rgba(255,215,0,0.12);border:1px solid rgba(255,215,0,0.3);
+       border-radius:8px;padding:3px 9px;font-size:0.8rem;color:#ffd700;">${w.en}</span>`
+    ).join('') + (weakArr.length > 10 ? `<span style="color:var(--text2);font-size:0.78rem;">他${weakArr.length-10}語</span>` : '');
+    dojoBtn.style.display = 'block';
+  } else {
+    summaryEl.style.display = 'none';
+    dojoBtn.style.display = 'none';
+  }
+
+  showScreen('screenResult');
+}
+
+// ════════════════════════════════
+// Weak Words & Dojo
+// ════════════════════════════════
+
+function addWeakWord(word) {
+  const key = word.en.toLowerCase();
+  if (weakWords.has(key)) {
+    weakWords.get(key).missCount++;
+  } else {
+    weakWords.set(key, { en: word.en, ja: word.ja, missCount: 1, addedManually: false });
+  }
+  updateDojoNavBtn();
+}
+
+function removeWeakWord(enKey) {
+  weakWords.delete(enKey);
+  updateDojoNavBtn();
+}
+
+function toggleWeak(mode, e) {
+  e.stopPropagation();
+  const word = gameWords[currentIndex];
+  if (!word) return;
+
+  const key = word.en.toLowerCase();
+  const btn = document.getElementById(mode + 'WeakBtn');
+  if (weakWords.has(key)) {
+    weakWords.delete(key);
+    if (btn) { btn.classList.remove('active'); btn.textContent = '☆'; }
+  } else {
+    weakWords.set(key, { en: word.en, ja: word.ja, missCount: 0, addedManually: true });
+    if (btn) { btn.classList.add('active'); btn.textContent = '⭐'; }
+  }
+  updateDojoNavBtn();
+}
+
+function updateWeakStarUI(mode) {
+  const word = gameWords[currentIndex];
+  if (!word) return;
+  const btn = document.getElementById(mode + 'WeakBtn');
+  if (!btn) return;
+  const isWeak = weakWords.has(word.en.toLowerCase());
+  btn.classList.toggle('active', isWeak);
+  btn.textContent = isWeak ? '⭐' : '☆';
+}
+
+function updateDojoNavBtn() {
+  const wrap = document.getElementById('dojoNavWrap');
+  const countEl = document.getElementById('dojoNavCount');
+  const n = weakWords.size;
+  if (n > 0) {
+    wrap.classList.add('visible');
+    countEl.textContent = n;
+  } else {
+    wrap.classList.remove('visible');
+  }
+}
+
+function openDojo() {
+  const currentActive = document.querySelector('.screen.active')?.id || 'screenUpload';
+  if (currentActive !== 'screenDojo') {
+    prevScreen = currentActive;
+  }
+  renderDojoList();
+  showScreen('screenDojo');
+}
+
+function goBack() {
+  const target = (prevScreen && prevScreen !== 'screenDojo') ? prevScreen : 'screenUpload';
+  showScreen(target);
+}
+
+// ── Quit / Home ──────────────────────────────────────────
+function confirmQuit() {
+  document.getElementById('quitModalBg').classList.add('show');
+}
+function closeQuitModal() {
+  document.getElementById('quitModalBg').classList.remove('show');
+}
+function doQuit() {
+  closeQuitModal();
+  showScreen('screenUpload');
+}
+
+function renderDojoList() {
+  const emptyEl = document.getElementById('dojoEmpty');
+  const listEl = document.getElementById('dojoWordList');
+  const actionsEl = document.getElementById('dojoActions');
+  const backOnlyEl = document.getElementById('dojoBackOnly');
+
+  const arr = [...weakWords.values()].sort((a, b) => b.missCount - a.missCount);
+
+  if (arr.length === 0) {
+    emptyEl.style.display = 'block';
+    listEl.style.display = 'none';
+    actionsEl.style.display = 'none';
+    backOnlyEl.style.display = 'block';
+    return;
+  }
+
+  emptyEl.style.display = 'none';
+  listEl.style.display = 'block';
+  actionsEl.style.display = arr.length >= 2 ? 'block' : 'none';
+  backOnlyEl.style.display = arr.length < 2 ? 'block' : 'none';
+
+  listEl.innerHTML = arr.map(w => {
+    const key = w.en.toLowerCase();
+    const missLabel = w.missCount > 0
+      ? `<span class="dwi-miss">ミス ${w.missCount}回</span>`
+      : `<span class="dwi-miss" style="background:rgba(255,215,0,0.1);color:#ffd700;">⭐ 登録</span>`;
+    return `
+      <div class="dojo-word-item">
+        <div class="dwi-words">
+          <div class="dwi-en">${w.en}</div>
+          <div class="dwi-ja">${w.ja}</div>
+        </div>
+        ${missLabel}
+        <button class="dwi-clear" onclick="clearWeakWord('${key}')">✅ バッチリ覚えた</button>
+      </div>`;
+  }).join('');
+}
+
+function clearWeakWord(key) {
+  removeWeakWord(key);
+  renderDojoList();
+}
+
+function startDojoGame() {
+  if (weakWords.size < 2) { alert('最低2語必要です'); return; }
+  isDojoMode = true;
+  wordGroups = [[...weakWords.values()]];
+  currentGroup = 0;
+  score = 0; correct = 0; wrong = 0; maxStreak = 0;
+  startGroup();
+}
+
+function replayGame() {
+  currentGroup = 0;
+  singleStageMode = false;
+  isDojoMode = false;
+  score = 0; correct = 0; wrong = 0; maxStreak = 0;
+  startGroup();
+}
+
+function goHome() { isDojoMode = false; showScreen('screenUpload'); }
+
+
+// ════════════════════════════════
+// Shared Helpers
+// ════════════════════════════════
+function updateMeta(mode) {
+  const total = gameWords.length;
+  const idx = currentIndex;
+  const progressEl = document.getElementById(mode + 'Progress');
+  const scoreEl = document.getElementById(mode + 'Score');
+  const counterEl = document.getElementById(mode + 'Counter');
+  const streakEl = document.getElementById(mode + 'Streak');
+  if (progressEl) progressEl.style.width = (idx / total * 100) + '%';
+  if (scoreEl) scoreEl.textContent = score;
+  if (counterEl) counterEl.textContent = (idx + 1) + ' / ' + total;
+  if (streakEl) streakEl.textContent = streak > 1 ? '🔥 ' + streak + '連続！' : '';
+}
+
+function showFeedback(isCorrect) {
+  const popup = document.getElementById('feedbackPopup');
+  popup.className = 'feedback-popup ' + (isCorrect ? 'correct' : 'wrong');
+  document.getElementById('fbEmoji').textContent = isCorrect ? '🎉' : '💪';
+  document.getElementById('fbText').textContent = isCorrect
+    ? correctMsgs[Math.floor(Math.random() * correctMsgs.length)]
+    : wrongMsgs[Math.floor(Math.random() * wrongMsgs.length)];
+  popup.classList.add('show');
+  setTimeout(() => popup.classList.remove('show'), 900);
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// ════════════════════════════════
+// localStorage 保存・復元
+// ════════════════════════════════
+const STORAGE_KEYS = {
+  words: 'wh_words',
+  dividers: 'wh_dividers',
+  weakWords: 'wh_weakWords',
+};
+
+function saveWords() {
+  try {
+    if (words.length > 0) {
+      localStorage.setItem(STORAGE_KEYS.words, JSON.stringify(words));
+      localStorage.setItem(STORAGE_KEYS.dividers, JSON.stringify([...dividers]));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.words);
+      localStorage.removeItem(STORAGE_KEYS.dividers);
+    }
+  } catch(e) {}
+}
+
+function loadWords() {
+  try {
+    const w = localStorage.getItem(STORAGE_KEYS.words);
+    const d = localStorage.getItem(STORAGE_KEYS.dividers);
+    if (w) {
+      words = JSON.parse(w);
+      dividers = new Set(d ? JSON.parse(d) : []);
+      return true;
+    }
+  } catch(e) {}
+  return false;
+}
+
+function saveWeakWords() {
+  try {
+    const arr = [...weakWords.entries()].map(([k, v]) => [k, v]);
+    localStorage.setItem(STORAGE_KEYS.weakWords, JSON.stringify(arr));
+  } catch(e) {}
+}
+
+function loadWeakWords() {
+  try {
+    const data = localStorage.getItem(STORAGE_KEYS.weakWords);
+    if (data) {
+      const arr = JSON.parse(data);
+      weakWords = new Map(arr);
+      updateDojoNavBtn();
+    }
+  } catch(e) {}
+}
+
+// ── 既存関数にフックを追加 ──
+
+// 起動時にデータ復元
+document.addEventListener('DOMContentLoaded', () => {
+  loadWeakWords();
+
+  // 前回の単語リストがあれば復元ボタンを表示
+  if (loadWords() && words.length > 0) {
+    renderWordList();
+    showRestoreBanner();
+  }
+});
+
+// 単語リスト変更時に自動保存（renderWordList をラップ）
+const _origRenderWordList = renderWordList;
+renderWordList = function() {
+  _origRenderWordList();
+  saveWords();
+};
+
+// 苦手単語変更時に自動保存（addWeakWord / removeWeakWord をラップ）
+const _origAddWeakWord = addWeakWord;
+addWeakWord = function(word) {
+  _origAddWeakWord(word);
+  saveWeakWords();
+};
+
+const _origRemoveWeakWord = removeWeakWord;
+removeWeakWord = function(enKey) {
+  _origRemoveWeakWord(enKey);
+  saveWeakWords();
+};
+
+const _origToggleWeak = toggleWeak;
+toggleWeak = function(mode, e) {
+  _origToggleWeak(mode, e);
+  saveWeakWords();
+};
+
+// ── 前回データ復元バナー ──
+function showRestoreBanner() {
+  // 既にバナーがあれば何もしない
+  if (document.getElementById('restoreBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'restoreBanner';
+  banner.style.cssText = `
+    background: #e8f6ff; border: 2px solid var(--blue);
+    border-radius: var(--r); padding: 14px 16px; margin-bottom: 16px;
+    text-align: center; font-weight: 800; font-size: 0.88rem;
+    color: var(--blue-dk);
+  `;
+  banner.innerHTML = `
+    📂 前回の単語リスト（${words.length}語）があります
+    <div style="display:flex;gap:8px;margin-top:10px;justify-content:center;">
+      <button onclick="restoreWords()" style="
+        background:var(--blue);color:white;border:none;border-radius:var(--r-full);
+        padding:8px 18px;font-family:'Nunito',sans-serif;font-weight:900;
+        font-size:0.85rem;cursor:pointer;box-shadow:0 3px 0 var(--blue-dk);
+      ">✅ 復元する</button>
+      <button onclick="dismissRestore()" style="
+        background:var(--surface);color:var(--text2);border:2px solid var(--border);
+        border-radius:var(--r-full);padding:8px 18px;font-family:'Nunito',sans-serif;
+        font-weight:900;font-size:0.85rem;cursor:pointer;
+      ">✕ 新しく始める</button>
+    </div>
+  `;
+  const screen = document.getElementById('screenUpload');
+  screen.insertBefore(banner, screen.querySelector('.tabs'));
+}
+
+function restoreWords() {
+  document.getElementById('restoreBanner')?.remove();
+  renderWordList();
+  showScreen('screenWordList');
+}
+
+function dismissRestore() {
+  document.getElementById('restoreBanner')?.remove();
+  words = []; dividers = new Set();
+  localStorage.removeItem(STORAGE_KEYS.words);
+  localStorage.removeItem(STORAGE_KEYS.dividers);
+}
+</script>
+</body>
+</html>
