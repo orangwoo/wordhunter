@@ -91,10 +91,13 @@ body::before {
    HEADER
 ══════════════════════════════════════ */
 .header {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 20px 0 14px;
   position: relative;
 }
+.header-center { text-align: center; flex: 1; }
 .logo {
   font-family: 'Fredoka One', cursive;
   font-size: 2.6rem;
@@ -110,6 +113,62 @@ body::before {
   font-weight: 700;
   letter-spacing: 0.5px;
 }
+.settings-nav-btn {
+  position: absolute; right: 0; top: 50%;
+  transform: translateY(-50%);
+  background: none; border: none; box-shadow: none;
+  cursor: pointer; font-size: 1.6rem;
+  padding: 6px; line-height: 1;
+  opacity: 0.5;
+  transition: opacity 0.15s, transform 0.25s;
+}
+.settings-nav-btn:hover { opacity: 1; transform: translateY(-50%) rotate(30deg); }
+.settings-nav-btn:active { transform: translateY(-50%) rotate(60deg); opacity: 1; }
+
+/* ── Game Home Screen ── */
+.game-home-wrap {
+  display: flex; flex-direction: column;
+  align-items: center; gap: 14px;
+  padding: 16px 0 8px;
+}
+.game-word-badge {
+  background: var(--green-lt); border: 2px solid var(--green);
+  color: var(--green-dk); font-weight: 900; font-size: 0.88rem;
+  border-radius: var(--r-full); padding: 8px 22px;
+}
+.game-no-words {
+  text-align: center; color: var(--text2);
+  font-size: 0.85rem; font-weight: 700; line-height: 1.8;
+}
+.game-start-big-btn {
+  width: 100%; padding: 20px; font-size: 1.2rem; margin-top: 4px;
+}
+.game-stage-sep {
+  text-align: center; color: var(--text2);
+  font-size: 0.8rem; font-weight: 700; padding: 4px 0;
+}
+.game-stage-btn {
+  width: 100%; display: flex; align-items: center;
+  justify-content: space-between; font-size: 0.95rem;
+}
+.gs-count {
+  font-size: 0.82rem; color: var(--text2); font-weight: 700;
+}
+/* ── Settings Screen Header ── */
+.settings-screen-header {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+}
+.settings-screen-title {
+  font-family: 'Fredoka One', cursive; font-size: 1.1rem;
+  color: var(--text); flex: 1;
+}
+.settings-back-btn {
+  background: none; border: 2px solid var(--border2); cursor: pointer;
+  font-size: 0.78rem; font-weight: 900; color: var(--text2);
+  padding: 6px 12px; font-family: 'Nunito', sans-serif;
+  border-radius: var(--r-full); transition: all 0.15s;
+}
+.settings-back-btn:hover { border-color: var(--accent2); color: var(--accent2); }
 
 /* ── Dojo Nav ── */
 .dojo-nav-wrap {
@@ -559,10 +618,12 @@ body::before {
 .option-btn.correct {
   background: var(--green-lt); border-color: var(--green);
   color: var(--green-dk); box-shadow: 0 4px 0 var(--green-dk);
+  transition: none;
 }
 .option-btn.wrong {
   background: #ffe0e0; border-color: var(--red);
   color: var(--red-dk); box-shadow: 0 4px 0 var(--red-dk);
+  transition: none;
 }
 
 /* ══════════════════════════════════════
@@ -964,8 +1025,11 @@ body::before {
 
   <!-- Header -->
   <div class="header">
-    <div class="logo">WordHunter 🔍</div>
-    <div class="tagline">英単語をハント！</div>
+    <div class="header-center">
+      <div class="logo">WordHunter 🔍</div>
+      <div class="tagline">英単語をハント！</div>
+    </div>
+    <button class="settings-nav-btn" id="settingsNavBtn" onclick="openSettings()" title="設定">⚙️</button>
   </div>
   <div class="dojo-nav-wrap" id="dojoNavWrap">
     <button class="dojo-nav-btn" id="dojoNavBtn" onclick="openDojo()">
@@ -978,8 +1042,28 @@ body::before {
     📱 ホーム画面に追加：Safari の <strong>共有ボタン</strong> →「ホーム画面に追加」
   </div>
 
-  <!-- ━━━ Screen 1: Upload ━━━ -->
-  <div id="screenUpload" class="screen active">
+  <!-- ━━━ Screen 0: Game Home ━━━ -->
+  <div id="screenGame" class="screen active">
+    <div class="game-home-wrap">
+      <div id="gameWordBadge" class="game-word-badge" style="display:none;">
+        📚 <span id="gameWordCount">0</span>語の単語が登録済み
+      </div>
+      <div id="gameNoWords" class="game-no-words">
+        📝 まだ単語が登録されていません<br>
+        <button class="hint-btn" style="margin-top:10px;" onclick="openSettings()">
+          ⚙️ 設定から単語を追加する
+        </button>
+      </div>
+      <div id="gameStageSelect" style="width:100%;display:flex;flex-direction:column;gap:10px;"></div>
+    </div>
+  </div>
+
+  <!-- ━━━ Screen 1: Settings (Upload) ━━━ -->
+  <div id="screenUpload" class="screen">
+    <div class="settings-screen-header">
+      <div class="settings-screen-title">⚙️ 設定・単語の管理</div>
+      <button class="settings-back-btn" onclick="closeSettings()">← ゲームに戻る</button>
+    </div>
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('manual')">✏️ 手入力</button>
       <button class="tab-btn" onclick="switchTab('csv')">📄 CSV</button>
@@ -1080,6 +1164,7 @@ body::before {
     </div>
 
     <button class="btn btn-primary" onclick="onGameStartClick()">⚡ ゲームスタート！</button>
+    <button class="settings-back-btn" style="display:block;margin:10px auto 0;" onclick="closeSettings()">← 設定に戻る</button>
   </div>
 
   <!-- ━━━ Screen 3b: Stage Select ━━━ -->
@@ -1261,7 +1346,7 @@ let gameWords = [];
 // ── Weak Words (練習道場) ──────────
 // Map: en (lowercase) → { en, ja, missCount, addedManually }
 let weakWords = new Map();
-let prevScreen = 'screenUpload';  // for goBack()
+let prevScreen = 'screenGame';  // for goBack()
 let isDojoMode = false;           // true when playing dojo game
 
 // Stage system: 0=quiz, 1=spell
@@ -1380,7 +1465,7 @@ function loadManualWords() {
   const pairs = getManualPairs();
   if (pairs.length < 4) { alert('最低4語入力してください'); return; }
   words = pairs; dividers = new Set();
-  renderWordList(); showScreen('screenWordList');
+  updateGameHomeBadge(); renderWordList(); showScreen('screenWordList');
 }
 
 // ── CSV ──
@@ -1445,7 +1530,7 @@ function readCsvFile(file) {
 function loadCsvWords() {
   if (csvParsed.length < 4) { alert('最低4語必要です'); return; }
   words = csvParsed; dividers = new Set();
-  renderWordList(); showScreen('screenWordList');
+  updateGameHomeBadge(); renderWordList(); showScreen('screenWordList');
 }
 
 function downloadCsvTemplate() {
@@ -1458,7 +1543,8 @@ function downloadCsvTemplate() {
 }
 
 function loadDemoWords() {
-  words = [...DEMO_WORDS]; dividers = new Set(); renderWordList(); showScreen('screenWordList');
+  words = [...DEMO_WORDS]; dividers = new Set();
+  updateGameHomeBadge(); renderWordList(); showScreen('screenWordList');
 }
 
 // ── Google Sheets ──────────────────────────────────────────
@@ -1541,7 +1627,11 @@ async function fetchGsheetCsv() {
     }
   } catch (err) {
     statusEl.style.color = 'var(--accent)';
-    statusEl.textContent = '❌ 読み込みに失敗しました。URLと「Webに公開」設定を確認してください。';
+    if (location.protocol === 'file:') {
+      statusEl.innerHTML = '❌ ローカルファイルでは使用できません。<br>GitHubページ（https://）から開いてください。';
+    } else {
+      statusEl.textContent = '❌ 読み込みに失敗しました。URLと「Webに公開」設定を確認してください。';
+    }
   } finally {
     fetchBtn.disabled = false;
   }
@@ -1550,7 +1640,7 @@ async function fetchGsheetCsv() {
 function loadGsheetWords() {
   if (gsheetParsed.length < 4) { alert('最低4語必要です'); return; }
   words = gsheetParsed; dividers = new Set();
-  renderWordList(); showScreen('screenWordList');
+  updateGameHomeBadge(); renderWordList(); showScreen('screenWordList');
 }
 
 // ════════════════════════════════
@@ -1700,6 +1790,75 @@ function removeWord(index, e) {
 let wordGroups = [];   // array of word arrays, one per group
 let currentGroup = 0;
 let singleStageMode = false;  // true = 1ステージだけプレイ中
+
+// 全単語をdividersで分割（screenGame用：wordListの選択状態に依存しない）
+function buildWordGroupsAll() {
+  const groups = [];
+  let current = [];
+  words.forEach((w, i) => {
+    current.push(w);
+    if (dividers.has(i) && current.length > 0) {
+      groups.push(current);
+      current = [];
+    }
+  });
+  if (current.length > 0) groups.push(current);
+  return groups.filter(g => g.length > 0);
+}
+
+function renderGameHomeStages() {
+  const container = document.getElementById('gameStageSelect');
+  if (!container) return;
+  container.innerHTML = '';
+  if (!words.length) return;
+
+  const groups = buildWordGroupsAll();
+  if (groups.length === 0) return;
+
+  if (groups.length === 1) {
+    // グループ1つ：大きなスタートボタンだけ
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary game-start-big-btn';
+    btn.innerHTML = '🎯 ゲームスタート！';
+    btn.onclick = () => {
+      wordGroups = groups;
+      currentGroup = 0; singleStageMode = false;
+      score = 0; correct = 0; wrong = 0; maxStreak = 0;
+      startGroup();
+    };
+    container.appendChild(btn);
+  } else {
+    // 複数グループ：全順番プレイ＋個別ボタン
+    const allBtn = document.createElement('button');
+    allBtn.className = 'btn btn-primary game-start-big-btn';
+    allBtn.innerHTML = `🚀 全ステージ順番にプレイ<span style="font-size:0.82rem;font-weight:700;opacity:0.8;margin-left:8px;">${groups.length}ステージ</span>`;
+    allBtn.onclick = () => {
+      wordGroups = groups;
+      currentGroup = 0; singleStageMode = false;
+      score = 0; correct = 0; wrong = 0; maxStreak = 0;
+      startGroup();
+    };
+    container.appendChild(allBtn);
+
+    const sep = document.createElement('div');
+    sep.className = 'game-stage-sep';
+    sep.textContent = '── または1ステージだけプレイ ──';
+    container.appendChild(sep);
+
+    groups.forEach((g, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'btn btn-neutral game-stage-btn';
+      btn.innerHTML = `<span>📚 ステージ ${i + 1}</span><span class="gs-count">${g.length} 語</span>`;
+      btn.onclick = () => {
+        wordGroups = groups;
+        currentGroup = i; singleStageMode = true;
+        score = 0; correct = 0; wrong = 0; maxStreak = 0;
+        startGroup();
+      };
+      container.appendChild(btn);
+    });
+  }
+}
 
 function buildWordGroups() {
   // Collect selected words maintaining order
@@ -1883,6 +2042,9 @@ function showQuizQuestion() {
   opts.sort(() => Math.random() - 0.5);
 
   const container = document.getElementById('quizOptions');
+  container.querySelectorAll('.option-btn').forEach(b => {
+    b.classList.remove('correct', 'wrong');
+  });
   container.innerHTML = '';
   opts.forEach(o => {
     const btn = document.createElement('button');
@@ -2239,8 +2401,37 @@ function openDojo() {
 }
 
 function goBack() {
-  const target = (prevScreen && prevScreen !== 'screenDojo') ? prevScreen : 'screenUpload';
+  const target = (prevScreen && prevScreen !== 'screenDojo') ? prevScreen : 'screenGame';
   showScreen(target);
+}
+
+// ── Game Home / Settings ─────────────────────────────────
+function openSettings() {
+  showScreen('screenUpload');
+}
+
+function closeSettings() {
+  updateGameHomeBadge();
+  showScreen('screenGame');
+}
+
+function updateGameHomeBadge() {
+  const badge   = document.getElementById('gameWordBadge');
+  const noWords = document.getElementById('gameNoWords');
+  if (words.length > 0) {
+    document.getElementById('gameWordCount').textContent = words.length;
+    badge.style.display   = 'block';
+    noWords.style.display = 'none';
+  } else {
+    badge.style.display   = 'none';
+    noWords.style.display = 'block';
+  }
+  renderGameHomeStages();
+}
+
+function startGameFromHome() {
+  if (!words.length) { openSettings(); return; }
+  renderGameHomeStages();
 }
 
 // ── Quit / Home ──────────────────────────────────────────
@@ -2252,7 +2443,7 @@ function closeQuitModal() {
 }
 function doQuit() {
   closeQuitModal();
-  showScreen('screenUpload');
+  showScreen('screenGame');
 }
 
 function renderDojoList() {
@@ -2315,7 +2506,7 @@ function replayGame() {
   startGroup();
 }
 
-function goHome() { isDojoMode = false; showScreen('screenUpload'); }
+function goHome() { isDojoMode = false; showScreen('screenGame'); }
 
 
 // ════════════════════════════════
@@ -2405,14 +2596,13 @@ function loadWeakWords() {
 
 // ── 既存関数にフックを追加 ──
 
-// 起動時にデータ復元
+// 起動時にデータ自動復元
 document.addEventListener('DOMContentLoaded', () => {
   loadWeakWords();
 
-  // 前回の単語リストがあれば復元ボタンを表示
   if (loadWords() && words.length > 0) {
-    renderWordList();
-    showRestoreBanner();
+    renderWordList();       // 単語リスト画面を準備
+    updateGameHomeBadge();  // ゲームホームのバッジ＆ステージボタンを更新
   }
 });
 
@@ -2442,49 +2632,6 @@ toggleWeak = function(mode, e) {
   saveWeakWords();
 };
 
-// ── 前回データ復元バナー ──
-function showRestoreBanner() {
-  // 既にバナーがあれば何もしない
-  if (document.getElementById('restoreBanner')) return;
-  const banner = document.createElement('div');
-  banner.id = 'restoreBanner';
-  banner.style.cssText = `
-    background: #e8f6ff; border: 2px solid var(--blue);
-    border-radius: var(--r); padding: 14px 16px; margin-bottom: 16px;
-    text-align: center; font-weight: 800; font-size: 0.88rem;
-    color: var(--blue-dk);
-  `;
-  banner.innerHTML = `
-    📂 前回の単語リスト（${words.length}語）があります
-    <div style="display:flex;gap:8px;margin-top:10px;justify-content:center;">
-      <button onclick="restoreWords()" style="
-        background:var(--blue);color:white;border:none;border-radius:var(--r-full);
-        padding:8px 18px;font-family:'Nunito',sans-serif;font-weight:900;
-        font-size:0.85rem;cursor:pointer;box-shadow:0 3px 0 var(--blue-dk);
-      ">✅ 復元する</button>
-      <button onclick="dismissRestore()" style="
-        background:var(--surface);color:var(--text2);border:2px solid var(--border);
-        border-radius:var(--r-full);padding:8px 18px;font-family:'Nunito',sans-serif;
-        font-weight:900;font-size:0.85rem;cursor:pointer;
-      ">✕ 新しく始める</button>
-    </div>
-  `;
-  const screen = document.getElementById('screenUpload');
-  screen.insertBefore(banner, screen.querySelector('.tabs'));
-}
-
-function restoreWords() {
-  document.getElementById('restoreBanner')?.remove();
-  renderWordList();
-  showScreen('screenWordList');
-}
-
-function dismissRestore() {
-  document.getElementById('restoreBanner')?.remove();
-  words = []; dividers = new Set();
-  localStorage.removeItem(STORAGE_KEYS.words);
-  localStorage.removeItem(STORAGE_KEYS.dividers);
-}
 </script>
 </body>
 </html>
