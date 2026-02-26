@@ -681,10 +681,13 @@ body::before {
   animation: slotShake 0.4s ease;
 }
 .spell-slot-space {
-  width: 14px; height: 54px; flex-shrink: 0;
+  width: 24px; height: 54px; flex-shrink: 0;
+  display: flex; align-items: flex-end; justify-content: center;
+  padding-bottom: 6px;
+  color: var(--text2); font-size: 0.6rem; opacity: 0.5;
 }
 .answer-guide-slot-space {
-  width: 12px; height: 38px; flex-shrink: 0;
+  width: 18px; height: 38px; flex-shrink: 0;
 }
 @keyframes slotPop { from { transform: scale(0.7); } to { transform: scale(1); } }
 @keyframes slotShake {
@@ -1215,7 +1218,12 @@ body::before {
       <div class="quiz-en" id="quizWord"></div>
       <button class="weak-star-btn" id="quizWeakBtn" onclick="toggleWeak('quiz', event)" title="苦手に追加">⭐</button>
     </div>
-    <div class="quiz-options" id="quizOptions"></div>
+    <div class="quiz-options" id="quizOptions">
+      <button class="option-btn" id="qopt0"></button>
+      <button class="option-btn" id="qopt1"></button>
+      <button class="option-btn" id="qopt2"></button>
+      <button class="option-btn" id="qopt3"></button>
+    </div>
     <button class="quit-link" onclick="confirmQuit()">🏠 中断してホームへ戻る</button>
   </div>
 
@@ -2051,24 +2059,27 @@ function showQuizQuestion() {
   }
   opts.sort(() => Math.random() - 0.5);
 
-  const container = document.getElementById('quizOptions');
-  container.innerHTML = '';
-  opts.forEach(o => {
-    const btn = document.createElement('button');
+  // 固定4ボタンを再利用（DOM生成・破棄なし → Safari GPU残像を根本解消）
+  for (let i = 0; i < 4; i++) {
+    const btn = document.getElementById('qopt' + i);
     btn.className = 'option-btn';
-    btn.style.transition = 'none'; // Safari: GPU層の色残り防止
-    btn.textContent = o.ja;
-    btn.onclick = () => quizAnswer(btn, o.ja === w.ja, container);
-    container.appendChild(btn);
-  });
-  // 次の描画フレームでtransitionを戻す（hover/clickエフェクト復元）
-  requestAnimationFrame(() => {
-    container.querySelectorAll('.option-btn').forEach(b => { b.style.transition = ''; });
-  });
+    btn.disabled = false;
+    btn.style.cssText = '';
+    btn.onclick = null;
+    if (i < opts.length) {
+      const o = opts[i];
+      btn.textContent = o.ja;
+      btn.style.display = '';
+      btn.onclick = () => quizAnswer(btn, o.ja === w.ja);
+    } else {
+      btn.textContent = '';
+      btn.style.display = 'none';
+    }
+  }
 }
 
-function quizAnswer(btn, isCorrect, container) {
-  container.querySelectorAll('.option-btn').forEach(b => b.disabled = true);
+function quizAnswer(btn, isCorrect) {
+  for (let i = 0; i < 4; i++) document.getElementById('qopt' + i).disabled = true;
   if (isCorrect) {
     btn.classList.add('correct');
     const pts = 10; score += pts; stageScore += pts; correct++;
@@ -2076,9 +2087,11 @@ function quizAnswer(btn, isCorrect, container) {
     showFeedback(true);
   } else {
     btn.classList.add('wrong');
-    container.querySelectorAll('.option-btn').forEach(b => {
-      if (b.textContent === gameWords[currentIndex].ja) b.classList.add('correct');
-    });
+    const correctJa = gameWords[currentIndex].ja;
+    for (let i = 0; i < 4; i++) {
+      const b = document.getElementById('qopt' + i);
+      if (b.textContent === correctJa) b.classList.add('correct');
+    }
     addWeakWord(gameWords[currentIndex]);
     wrong++; streak = 0; showFeedback(false);
   }
@@ -2094,15 +2107,19 @@ function initSpellGame() {
   showSpellQuestion();
 }
 
+// スペース位置を自動で埋める（スペースは入力不要にする）
+function resetSpellInput() {
+  spellInput = [];
+  for (let i = 0; i < spellAnswer.length; i++) {
+    if (spellAnswer[i] === ' ') spellInput[i] = ' ';
+  }
+}
+
 function showSpellQuestion() {
   if (currentIndex >= gameWords.length) { advanceStage(); return; }
   const w = gameWords[currentIndex];
   spellAnswer = w.en.toLowerCase();
-  spellInput = [];
-  // スペース位置は自動で埋める
-  for (let i = 0; i < spellAnswer.length; i++) {
-    if (spellAnswer[i] === ' ') spellInput[i] = ' ';
-  }
+  resetSpellInput();
   hintUsed = false; spellLocked = false;
   // isPracticeMode is set by caller — don't reset here
   updateMeta('spell');
@@ -2153,9 +2170,10 @@ function renderSpellSlots() {
   container.innerHTML = '';
   for (let i = 0; i < spellAnswer.length; i++) {
     if (spellAnswer[i] === ' ') {
-      // スペース位置：専用の区切りスロット
+      // スペース位置：視認できる区切りスロット
       const sp = document.createElement('div');
       sp.className = 'spell-slot-space';
+      sp.textContent = '␣';
       container.appendChild(sp);
     } else {
       const slot = document.createElement('div');
@@ -2242,7 +2260,10 @@ function useHint() {
 function spellSubmit() {
   if (spellLocked) return; spellLocked = true;
   let typed = '';
-  for (let i = 0; i < spellAnswer.length; i++) typed += (spellInput[i] || '');
+  for (let i = 0; i < spellAnswer.length; i++) {
+    // スペース位置は常にスペースとして扱う
+    typed += spellAnswer[i] === ' ' ? ' ' : (spellInput[i] || '');
+  }
   const isCorrect = typed.toLowerCase() === spellAnswer;
 
   for (let i = 0; i < spellAnswer.length; i++) {
@@ -2269,7 +2290,7 @@ function spellSubmit() {
       showFeedback(false);
       // Reset slots after short delay so they can see the mistake
       setTimeout(() => {
-        spellInput = []; spellLocked = false;
+        resetSpellInput(); spellLocked = false;
         renderSpellSlots();
         document.getElementById('spellSubmitBtn').disabled = true;
       }, 900);
