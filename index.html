@@ -680,6 +680,12 @@ body::before {
   color: var(--red-dk); box-shadow: 0 3px 0 var(--red-dk);
   animation: slotShake 0.4s ease;
 }
+.spell-slot-space {
+  width: 14px; height: 54px; flex-shrink: 0;
+}
+.answer-guide-slot-space {
+  width: 12px; height: 38px; flex-shrink: 0;
+}
 @keyframes slotPop { from { transform: scale(0.7); } to { transform: scale(1); } }
 @keyframes slotShake {
   0%,100%{transform:translateX(0)}
@@ -1465,7 +1471,8 @@ function loadManualWords() {
   const pairs = getManualPairs();
   if (pairs.length < 4) { alert('最低4語入力してください'); return; }
   words = pairs; dividers = new Set();
-  updateGameHomeBadge(); renderWordList(); showScreen('screenWordList');
+  saveWords(); renderWordList();
+  closeSettings();
 }
 
 // ── CSV ──
@@ -1530,7 +1537,8 @@ function readCsvFile(file) {
 function loadCsvWords() {
   if (csvParsed.length < 4) { alert('最低4語必要です'); return; }
   words = csvParsed; dividers = new Set();
-  updateGameHomeBadge(); renderWordList(); showScreen('screenWordList');
+  saveWords(); renderWordList();
+  closeSettings();
 }
 
 function downloadCsvTemplate() {
@@ -1544,7 +1552,8 @@ function downloadCsvTemplate() {
 
 function loadDemoWords() {
   words = [...DEMO_WORDS]; dividers = new Set();
-  updateGameHomeBadge(); renderWordList(); showScreen('screenWordList');
+  saveWords(); renderWordList();
+  closeSettings();
 }
 
 // ── Google Sheets ──────────────────────────────────────────
@@ -1640,7 +1649,8 @@ async function fetchGsheetCsv() {
 function loadGsheetWords() {
   if (gsheetParsed.length < 4) { alert('最低4語必要です'); return; }
   words = gsheetParsed; dividers = new Set();
-  updateGameHomeBadge(); renderWordList(); showScreen('screenWordList');
+  saveWords(); renderWordList();
+  closeSettings();
 }
 
 // ════════════════════════════════
@@ -2045,9 +2055,15 @@ function showQuizQuestion() {
   container.innerHTML = '';
   opts.forEach(o => {
     const btn = document.createElement('button');
-    btn.className = 'option-btn'; btn.textContent = o.ja;
+    btn.className = 'option-btn';
+    btn.style.transition = 'none'; // Safari: GPU層の色残り防止
+    btn.textContent = o.ja;
     btn.onclick = () => quizAnswer(btn, o.ja === w.ja, container);
     container.appendChild(btn);
+  });
+  // 次の描画フレームでtransitionを戻す（hover/clickエフェクト復元）
+  requestAnimationFrame(() => {
+    container.querySelectorAll('.option-btn').forEach(b => { b.style.transition = ''; });
   });
 }
 
@@ -2082,7 +2098,12 @@ function showSpellQuestion() {
   if (currentIndex >= gameWords.length) { advanceStage(); return; }
   const w = gameWords[currentIndex];
   spellAnswer = w.en.toLowerCase();
-  spellInput = []; hintUsed = false; spellLocked = false;
+  spellInput = [];
+  // スペース位置は自動で埋める
+  for (let i = 0; i < spellAnswer.length; i++) {
+    if (spellAnswer[i] === ' ') spellInput[i] = ' ';
+  }
+  hintUsed = false; spellLocked = false;
   // isPracticeMode is set by caller — don't reset here
   updateMeta('spell');
   document.getElementById('spellJaWord').textContent = w.ja;
@@ -2105,8 +2126,12 @@ function showSpellQuestion() {
     guide.innerHTML = '';
     for (const ch of spellAnswer) {
       const s = document.createElement('div');
-      s.className = 'answer-guide-slot';
-      s.textContent = ch.toUpperCase();
+      if (ch === ' ') {
+        s.className = 'answer-guide-slot-space';
+      } else {
+        s.className = 'answer-guide-slot';
+        s.textContent = ch.toUpperCase();
+      }
       guide.appendChild(s);
     }
     sqPractice.classList.add('visible');
@@ -2127,21 +2152,33 @@ function renderSpellSlots() {
   const container = document.getElementById('spellSlots');
   container.innerHTML = '';
   for (let i = 0; i < spellAnswer.length; i++) {
-    const slot = document.createElement('div');
-    slot.className = 'spell-slot'; slot.id = 'slot-' + i;
-    if (i === 0 && hintUsed) {
-      slot.classList.add('hint-slot');
-      slot.textContent = spellAnswer[0].toUpperCase();
-    } else if (spellInput[i]) {
-      slot.classList.add('filled');
-      slot.textContent = spellInput[i].toUpperCase();
-      slot.onclick = () => deleteUpTo(i);
+    if (spellAnswer[i] === ' ') {
+      // スペース位置：専用の区切りスロット
+      const sp = document.createElement('div');
+      sp.className = 'spell-slot-space';
+      container.appendChild(sp);
+    } else {
+      const slot = document.createElement('div');
+      slot.className = 'spell-slot'; slot.id = 'slot-' + i;
+      if (i === 0 && hintUsed) {
+        slot.classList.add('hint-slot');
+        slot.textContent = spellAnswer[0].toUpperCase();
+      } else if (spellInput[i]) {
+        slot.classList.add('filled');
+        slot.textContent = spellInput[i].toUpperCase();
+        slot.onclick = () => deleteUpTo(i);
+      }
+      container.appendChild(slot);
     }
-    container.appendChild(slot);
   }
+  // スペースを除いた文字数で判定
   const startIdx = hintUsed ? 1 : 0;
-  const filled = spellInput.slice(startIdx).filter(Boolean).length;
-  const needed = spellAnswer.length - startIdx;
+  let filled = 0, needed = 0;
+  for (let i = startIdx; i < spellAnswer.length; i++) {
+    if (spellAnswer[i] === ' ') continue;
+    needed++;
+    if (spellInput[i]) filled++;
+  }
   document.getElementById('spellSubmitBtn').disabled = filled < needed;
 }
 
@@ -2173,6 +2210,7 @@ function typeKey(ch) {
   const startIdx = hintUsed ? 1 : 0;
   let nextEmpty = -1;
   for (let i = startIdx; i < spellAnswer.length; i++) {
+    if (spellAnswer[i] === ' ') continue; // スペース位置はスキップ
     if (!spellInput[i]) { nextEmpty = i; break; }
   }
   if (nextEmpty === -1) return;
@@ -2183,6 +2221,7 @@ function deleteLast() {
   if (spellLocked) return;
   const startIdx = hintUsed ? 1 : 0;
   for (let i = spellAnswer.length - 1; i >= startIdx; i--) {
+    if (spellAnswer[i] === ' ') continue; // スペース位置はスキップ
     if (spellInput[i]) { spellInput[i] = null; break; }
   }
   renderSpellSlots();
