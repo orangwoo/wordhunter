@@ -855,6 +855,35 @@ body::before {
 }
 
 /* ══════════════════════════════════════
+   GOOGLE SHEETS TAB
+══════════════════════════════════════ */
+.gsheet-steps {
+  background: var(--surface2); border-radius: var(--r-md);
+  padding: 14px 16px; margin-bottom: 14px;
+}
+.gsheet-step-title {
+  font-size: 0.85rem; font-weight: 900; color: var(--text); margin-bottom: 8px;
+}
+.gsheet-step-list {
+  margin: 0; padding-left: 18px;
+}
+.gsheet-step-list li {
+  font-size: 0.8rem; color: var(--text2); font-weight: 700;
+  margin-bottom: 5px; line-height: 1.5;
+}
+.gsheet-url-wrap {
+  display: flex; gap: 8px;
+}
+.gsheet-url-input {
+  flex: 1; border: 2px solid var(--border2); border-radius: var(--r-md);
+  padding: 11px 12px; font-family: 'Nunito', sans-serif;
+  font-size: 0.78rem; font-weight: 700; color: var(--text);
+  background: var(--surface); outline: none; min-width: 0;
+}
+.gsheet-url-input:focus { border-color: var(--accent2); }
+.gsheet-url-input::placeholder { color: var(--text2); opacity: 0.7; }
+
+/* ══════════════════════════════════════
    PWA BANNER
 ══════════════════════════════════════ */
 .pwa-banner {
@@ -954,6 +983,7 @@ body::before {
     <div class="tabs">
       <button class="tab-btn active" onclick="switchTab('manual')">✏️ 手入力</button>
       <button class="tab-btn" onclick="switchTab('csv')">📄 CSV</button>
+      <button class="tab-btn" onclick="switchTab('gsheet')">🔗 Gシート</button>
       <button class="tab-btn" onclick="switchTab('demo')">🎮 デモ</button>
     </div>
 
@@ -993,6 +1023,27 @@ body::before {
       <div style="text-align:center;margin-top:12px;">
         <button class="hint-btn" onclick="downloadCsvTemplate()">⬇️ テンプレートCSVをダウンロード</button>
       </div>
+    </div>
+
+    <!-- Googleシートタブ -->
+    <div id="tabGsheet" style="display:none;">
+      <div class="gsheet-steps">
+        <div class="gsheet-step-title">📋 Googleスプレッドシートの準備</div>
+        <ol class="gsheet-step-list">
+          <li>A列に英語、B列に日本語を入力</li>
+          <li>「ファイル」→「共有」→「Webに公開」をクリック</li>
+          <li>「カンマ区切りの値（.csv）」を選択して「公開」</li>
+          <li>表示されたURLをコピーして下に貼り付け</li>
+        </ol>
+      </div>
+      <div class="gsheet-url-wrap">
+        <input type="url" id="gsheetUrl" class="gsheet-url-input"
+          placeholder="https://docs.google.com/spreadsheets/..."
+          oninput="onGsheetUrlInput()" autocorrect="off" autocapitalize="none" spellcheck="false">
+      </div>
+      <button class="btn btn-primary" id="gsheetFetchBtn" onclick="fetchGsheetCsv()" disabled style="margin-top:10px;">📥 読み込む</button>
+      <div id="gsheetStatus" style="display:none; margin-top:10px; text-align:center; font-size:0.85rem; font-weight:800;"></div>
+      <button class="btn btn-primary" id="gsheetStartBtn" onclick="loadGsheetWords()" disabled style="margin-top:10px;">✅ この単語で始める</button>
     </div>
 
     <!-- デモタブ -->
@@ -1265,11 +1316,11 @@ if (isIOS && !isStandalone) {
 // ════════════════════════════════
 // Upload / Tab
 // ════════════════════════════════
-const TAB_IDS = { manual:'tabManual', csv:'tabCsv', demo:'tabDemo' };
+const TAB_IDS = { manual:'tabManual', csv:'tabCsv', gsheet:'tabGsheet', demo:'tabDemo' };
 
 function switchTab(tab) {
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  const tabs = ['manual','csv','demo'];
+  const tabs = ['manual','csv','gsheet','demo'];
   const idx = tabs.indexOf(tab);
   document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   Object.values(TAB_IDS).forEach(id => {
@@ -1408,6 +1459,98 @@ function downloadCsvTemplate() {
 
 function loadDemoWords() {
   words = [...DEMO_WORDS]; dividers = new Set(); renderWordList(); showScreen('screenWordList');
+}
+
+// ── Google Sheets ──────────────────────────────────────────
+let gsheetParsed = [];
+
+function onGsheetUrlInput() {
+  const url = document.getElementById('gsheetUrl').value.trim();
+  document.getElementById('gsheetFetchBtn').disabled = !url;
+  document.getElementById('gsheetStatus').style.display = 'none';
+  document.getElementById('gsheetStartBtn').disabled = true;
+  gsheetParsed = [];
+}
+
+function getGsheetExportUrl(input) {
+  // すでに公開CSV URL（/pub?...output=csv）の場合はそのまま
+  if (input.includes('/pub') && input.includes('output=csv')) return input;
+  // /pub はあるが output=csv がない場合
+  if (input.includes('/pub')) {
+    const sep = input.includes('?') ? '&' : '?';
+    return input + sep + 'output=csv';
+  }
+  // 通常の編集URL（/edit）→ export URL に変換
+  const match = input.match(/\/spreadsheets\/d\/([^\/]+)/);
+  if (match) {
+    const id = match[1];
+    const gidMatch = input.match(/[#&?]gid=(\d+)/);
+    const gid = gidMatch ? gidMatch[1] : '0';
+    return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+  }
+  return input;
+}
+
+function parseCsvText(text) {
+  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const parsed = [];
+  const errors = [];
+  lines.forEach((line, i) => {
+    const parts = line.split(',');
+    if (parts.length >= 2) {
+      const en = parts[0].trim().toLowerCase();
+      const ja = parts[1].trim();
+      if (en && ja) parsed.push({ en, ja });
+      else errors.push(i + 1);
+    } else {
+      errors.push(i + 1);
+    }
+  });
+  return { parsed, errors };
+}
+
+async function fetchGsheetCsv() {
+  const rawUrl = document.getElementById('gsheetUrl').value.trim();
+  if (!rawUrl) return;
+  const exportUrl = getGsheetExportUrl(rawUrl);
+  const statusEl = document.getElementById('gsheetStatus');
+  const startBtn = document.getElementById('gsheetStartBtn');
+  const fetchBtn = document.getElementById('gsheetFetchBtn');
+
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--text2)';
+  statusEl.textContent = '⏳ 読み込み中...';
+  fetchBtn.disabled = true;
+  startBtn.disabled = true;
+  gsheetParsed = [];
+
+  try {
+    const res = await fetch(exportUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    const { parsed, errors } = parseCsvText(text);
+    gsheetParsed = parsed;
+    if (parsed.length > 0) {
+      statusEl.style.color = 'var(--accent3)';
+      statusEl.textContent = `✅ ${parsed.length}語 読み込みました` +
+        (errors.length ? `（${errors.length}行スキップ）` : '');
+      startBtn.disabled = parsed.length < 4;
+    } else {
+      statusEl.style.color = 'var(--accent)';
+      statusEl.textContent = '❌ 読み込める単語がありませんでした。シートの形式を確認してください。';
+    }
+  } catch (err) {
+    statusEl.style.color = 'var(--accent)';
+    statusEl.textContent = '❌ 読み込みに失敗しました。URLと「Webに公開」設定を確認してください。';
+  } finally {
+    fetchBtn.disabled = false;
+  }
+}
+
+function loadGsheetWords() {
+  if (gsheetParsed.length < 4) { alert('最低4語必要です'); return; }
+  words = gsheetParsed; dividers = new Set();
+  renderWordList(); showScreen('screenWordList');
 }
 
 // ════════════════════════════════
