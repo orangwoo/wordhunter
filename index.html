@@ -154,6 +154,26 @@ body::before {
 .gs-count {
   font-size: 0.82rem; color: var(--text2); font-weight: 700;
 }
+.game-mode-wrap {
+  width: 100%; display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.game-mode-label {
+  font-size: 0.78rem; color: var(--text2); font-weight: 800;
+}
+.game-mode-btns {
+  display: flex; gap: 6px; width: 100%;
+}
+.game-mode-btn {
+  flex: 1; padding: 10px 6px; border-radius: var(--r-lg);
+  border: 2px solid var(--border); background: var(--surface);
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.78rem;
+  color: var(--text2); cursor: pointer; transition: all 0.15s;
+  text-align: center; line-height: 1.3;
+}
+.game-mode-btn.active {
+  border-color: var(--blue); background: #e8f6ff; color: var(--blue-dk);
+  box-shadow: 0 2px 0 var(--blue-dk);
+}
 /* ── Settings Screen Header ── */
 .settings-screen-header {
   display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
@@ -1129,6 +1149,14 @@ body::before {
           ⚙️ 設定から単語を追加する
         </button>
       </div>
+      <div class="game-mode-wrap" id="gameModeWrap" style="display:none;">
+        <div class="game-mode-label">🎮 プレイモード</div>
+        <div class="game-mode-btns">
+          <button class="game-mode-btn active" id="gmBtnBoth" onclick="setGameMode('both')">🎯→⌨️<br>両方</button>
+          <button class="game-mode-btn" id="gmBtnQuiz" onclick="setGameMode('quiz')">🎯<br>4択のみ</button>
+          <button class="game-mode-btn" id="gmBtnSpell" onclick="setGameMode('spell')">⌨️<br>スペルのみ</button>
+        </div>
+      </div>
       <div id="gameStageSelect" style="width:100%;display:flex;flex-direction:column;gap:10px;"></div>
     </div>
   </div>
@@ -1231,11 +1259,7 @@ body::before {
 
     <div class="stage-banner">
       <div class="sb-title">🎮 ゲームの流れ</div>
-      <div class="stages">
-        <div class="stage-pill"><span class="s-icon">🎯</span><div class="s-name">4択クイズ</div></div>
-        <div class="stage-arrow">→</div>
-        <div class="stage-pill"><span class="s-icon">⌨️</span><div class="s-name">スペリング</div></div>
-      </div>
+      <div class="stages" id="stageBannerFlow"></div>
       <div style="font-size:0.75rem;color:var(--text2);margin-top:8px;">区切りを入れるとステージごとに進みます</div>
     </div>
 
@@ -1447,6 +1471,36 @@ const STAGES = [
   { id: 'spell', name: 'スペリング入力',   icon: '⌨️', screen: 'screenSpell' },
 ];
 let currentStage = 0;
+
+// Game mode: 'both' | 'quiz' | 'spell'
+let gameMode = 'both';
+
+function setGameMode(mode) {
+  gameMode = mode;
+  localStorage.setItem('wh_gameMode', mode);
+  document.getElementById('gmBtnBoth').classList.toggle('active', mode === 'both');
+  document.getElementById('gmBtnQuiz').classList.toggle('active', mode === 'quiz');
+  document.getElementById('gmBtnSpell').classList.toggle('active', mode === 'spell');
+  updateStageBannerFlow();
+}
+
+function updateStageBannerFlow() {
+  const el = document.getElementById('stageBannerFlow');
+  if (!el) return;
+  const active = getActiveStages();
+  const pills = active.map(i => {
+    const s = STAGES[i];
+    return `<div class="stage-pill"><span class="s-icon">${s.icon}</span><div class="s-name">${s.name}</div></div>`;
+  });
+  el.innerHTML = pills.join('<div class="stage-arrow">→</div>');
+}
+
+// Returns the list of stage indices to play based on gameMode
+function getActiveStages() {
+  if (gameMode === 'quiz') return [0];
+  if (gameMode === 'spell') return [1];
+  return [0, 1]; // both
+}
 
 // Per-round state (reset each stage)
 let currentIndex = 0;
@@ -1927,6 +1981,11 @@ function renderGameHomeStages() {
   const container = document.getElementById('gameStageSelect');
   if (!container) return;
   container.innerHTML = '';
+
+  // Show/hide game mode selector
+  const modeWrap = document.getElementById('gameModeWrap');
+  if (modeWrap) modeWrap.style.display = words.length ? '' : 'none';
+
   if (!words.length) return;
 
   const groups = buildWordGroupsAll();
@@ -2070,7 +2129,7 @@ function startGame() {
 function startGroup() {
   gameWords = [...wordGroups[currentGroup]];
   gameWords.sort(() => Math.random() - 0.5);
-  currentStage = 0;
+  currentStage = getActiveStages()[0];
   showStageTransition(true);
 }
 
@@ -2100,13 +2159,16 @@ function showStageTransition(isFirst) {
   document.getElementById('stScore').textContent = isFirst ? '' : `ここまでの合計：${score}点`;
   document.getElementById('stBtn').textContent = isFirst ? 'スタート！' : '次のモードへ！';
 
-  // Stage dots (game modes)
+  // Stage dots (only active game modes)
   const dots = document.getElementById('stageDots');
   dots.innerHTML = '';
-  STAGES.forEach((s, i) => {
+  const active = getActiveStages();
+  active.forEach(i => {
+    const s = STAGES[i];
     const d = document.createElement('div');
-    d.className = 'stage-dot ' + (i < currentStage ? 'done' : i === currentStage ? 'current' : 'upcoming');
-    d.textContent = i < currentStage ? '✓' : s.icon;
+    const done = active.indexOf(i) < active.indexOf(currentStage);
+    d.className = 'stage-dot ' + (done ? 'done' : i === currentStage ? 'current' : 'upcoming');
+    d.textContent = done ? '✓' : s.icon;
     dots.appendChild(d);
   });
 
@@ -2121,9 +2183,10 @@ function proceedFromTransition() {
 }
 
 function advanceStage() {
-  currentStage++;
-  if (currentStage >= STAGES.length) {
-    // This group is done
+  const active = getActiveStages();
+  const curIdx = active.indexOf(currentStage);
+  if (curIdx === -1 || curIdx >= active.length - 1) {
+    // This group is done (no more active stages)
     if (!singleStageMode && wordGroups.length > 1 && currentGroup < wordGroups.length - 1) {
       // Show stage clear screen
       const gn = currentGroup + 1;
@@ -2137,6 +2200,7 @@ function advanceStage() {
       showResult();
     }
   } else {
+    currentStage = active[curIdx + 1];
     showStageTransition(false);
   }
 }
@@ -2693,7 +2757,7 @@ document.addEventListener('keydown', e => {
 // Result
 // ════════════════════════════════
 function showResult() {
-  const total = gameWords.length * STAGES.length;
+  const total = gameWords.length * getActiveStages().length;
   const pct = Math.round(correct / (correct + wrong) * 100) || 0;
   let emoji = '😅', title = 'もう少し！';
   if (pct >= 90) { emoji = '🏆'; title = '完璧！最高！'; }
@@ -2993,6 +3057,14 @@ function loadWeakWords() {
 // 起動時にデータ自動復元
 document.addEventListener('DOMContentLoaded', () => {
   loadWeakWords();
+
+  // Restore game mode
+  const savedMode = localStorage.getItem('wh_gameMode');
+  if (savedMode && ['both', 'quiz', 'spell'].includes(savedMode)) {
+    setGameMode(savedMode);
+  } else {
+    updateStageBannerFlow();
+  }
 
   if (loadWords() && words.length > 0) {
     renderWordList();       // 単語リスト画面を準備
