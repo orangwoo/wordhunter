@@ -1,4 +1,4 @@
-const CACHE_NAME = 'wordhunter-v4';
+const CACHE_NAME = 'wordhunter-v5';
 const ASSETS = [
   './',
   './index.html',
