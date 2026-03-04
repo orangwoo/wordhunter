@@ -715,7 +715,7 @@ body::before {
 }
 .kb-row { display: flex; gap: 5px; justify-content: center; }
 .kb-key {
-  width: 34px; height: 46px;
+  min-width: 30px; width: 34px; height: 46px; flex-shrink: 1;
   background: var(--surface);
   border: 2px solid var(--border2);
   border-radius: var(--r-sm);
@@ -731,6 +731,14 @@ body::before {
   width: 52px; font-size: 0.85rem;
   background: #ffe0e0; border-color: var(--red);
   box-shadow: 0 3px 0 var(--red-dk); color: var(--red-dk);
+}
+.kb-key.kb-shift {
+  width: 52px; font-size: 0.85rem;
+  background: #e8f6ff; border-color: var(--blue);
+  box-shadow: 0 3px 0 var(--blue-dk); color: var(--blue-dk);
+}
+.kb-key.kb-shift.active {
+  background: var(--blue); color: #fff;
 }
 
 .spell-actions { display: flex; gap: 10px; }
@@ -783,6 +791,64 @@ body::before {
   font-family: 'Fredoka One', cursive; font-size: 1.1rem;
   color: #7a6300;
   box-shadow: 0 2px 0 #c9a900;
+}
+
+/* ── Handwriting Mode ── */
+.hw-mode-toggle {
+  display: flex; justify-content: center; gap: 6px; margin-bottom: 10px;
+}
+.hw-mode-btn {
+  padding: 6px 14px; border-radius: var(--r-full);
+  border: 2px solid var(--border); background: var(--surface);
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.8rem;
+  color: var(--text2); cursor: pointer; transition: all 0.15s;
+}
+.hw-mode-btn.active {
+  border-color: var(--blue); background: #e8f6ff; color: var(--blue-dk);
+}
+.hw-pad-wrap {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 8px; margin-bottom: 14px;
+}
+.hw-input {
+  width: 90%; max-width: 260px; height: 120px;
+  border: 3px dashed var(--blue);
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  font-family: 'Fredoka One', cursive;
+  font-size: 4rem;
+  text-align: center;
+  color: var(--text);
+  outline: none;
+  caret-color: var(--blue);
+  text-transform: uppercase;
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.04);
+  -webkit-appearance: none; appearance: none;
+}
+.hw-input:focus {
+  border-style: solid;
+  box-shadow: 0 0 0 4px var(--blue-lt), inset 0 2px 8px rgba(0,0,0,0.04);
+}
+.hw-input::placeholder { color: var(--border2); font-size: 2rem; }
+.hw-guide {
+  font-size: 0.78rem; color: var(--text2); font-weight: 700;
+}
+.hw-feedback {
+  font-weight: 800; font-size: 0.9rem; min-height: 22px;
+  transition: opacity 0.2s;
+}
+.hw-feedback.correct { color: var(--green); }
+.hw-feedback.wrong { color: var(--red); }
+
+.spell-slot.current-slot {
+  border-color: var(--blue);
+  background: var(--blue-lt);
+  box-shadow: 0 3px 0 var(--blue-dk), 0 0 0 3px rgba(59,130,246,0.2);
+  animation: currentPulse 1.5s ease-in-out infinite;
+}
+@keyframes currentPulse {
+  0%, 100% { box-shadow: 0 3px 0 var(--blue-dk), 0 0 0 3px rgba(59,130,246,0.15); }
+  50% { box-shadow: 0 3px 0 var(--blue-dk), 0 0 0 6px rgba(59,130,246,0.3); }
 }
 
 /* ══════════════════════════════════════
@@ -1098,8 +1164,8 @@ body::before {
     <div id="tabCsv" style="display:none;">
       <div class="csv-info">
         <div class="csv-format-title">📋 CSVファイルの形式</div>
-        <div class="csv-format-example">apple,りんご<br>school,学校<br>teacher,先生</div>
-        <div class="csv-format-note">1行に「英語,日本語」の形式。ヘッダー行は不要です。</div>
+        <div class="csv-format-example">apple,りんご<br>school,学校<br>teacher,先生<br><span style="color:var(--blue)">（空行）</span><br>friend,友達<br>beautiful,美しい</div>
+        <div class="csv-format-note">1行に「英語,日本語」の形式。ヘッダー行は不要です。<br>空行を入れるとグループ（ステージ）を区切れます。</div>
       </div>
       <div class="upload-zone" id="csvZone" onclick="document.getElementById('csvFileInput').click()">
         <span class="upload-icon">📄</span>
@@ -1124,6 +1190,7 @@ body::before {
         <div class="gsheet-step-title">📋 Googleスプレッドシートの準備</div>
         <ol class="gsheet-step-list">
           <li>A列に英語、B列に日本語を入力</li>
+          <li>空行を入れるとグループ（ステージ）を区切れます</li>
           <li>「ファイル」→「共有」→「Webに公開」をクリック</li>
           <li>「カンマ区切りの値（.csv）」を選択して「公開」</li>
           <li>表示されたURLをコピーして下に貼り付け</li>
@@ -1260,7 +1327,18 @@ body::before {
     <div style="text-align:center;margin-bottom:12px;">
       <button class="hint-btn" id="hintBtn" onclick="useHint()">💡 ヒント（最初の文字）</button>
     </div>
+    <div class="hw-mode-toggle" id="hwModeToggle">
+      <button class="hw-mode-btn active" id="btnModeKb" onclick="toggleHwMode('kb')">⌨️ キーボード</button>
+      <button class="hw-mode-btn" id="btnModeHw" onclick="toggleHwMode('hw')">✏️ 手書き</button>
+    </div>
     <div class="spell-keyboard" id="spellKeyboard"></div>
+    <div class="hw-pad-wrap" id="hwPadWrap" style="display:none;">
+      <input type="text" class="hw-input" id="hwInput" maxlength="1"
+        autocapitalize="none" autocorrect="off" spellcheck="false"
+        placeholder="✏️" inputmode="none">
+      <div class="hw-guide" id="hwGuide">ここに1文字ずつ書こう</div>
+      <div class="hw-feedback" id="hwFeedback"></div>
+    </div>
     <div class="spell-actions">
       <button class="btn btn-danger" style="flex:1;" id="spellSkipBtn" onclick="spellSkip()">⏭ スキップ</button>
       <button class="btn btn-success" style="flex:1;" id="spellSubmitBtn" onclick="spellSubmit()" disabled>✅ 確認</button>
@@ -1380,12 +1458,18 @@ let streak = 0;
 let maxStreak = 0;
 
 // Spelling
-const KB_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
+const KB_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm-'];
+let kbUpper = false; // false = 小文字, true = 大文字
 let spellInput = [];
 let spellAnswer = '';
 let hintUsed = false;
 let spellLocked = false;
 let isPracticeMode = false;  // true = 見ながら練習モード
+
+// Handwriting mode
+let hwMode = false;
+let hwCurrentPos = 0;
+let hwProcessing = false; // prevent double-processing
 
 const DEMO_WORDS = [
   {en:'apple',ja:'りんご'},{en:'school',ja:'学校'},{en:'teacher',ja:'先生'},
@@ -1508,29 +1592,22 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+let csvDividersParsed = new Set();
 function readCsvFile(file) {
   const reader = new FileReader();
   reader.onload = e => {
     const text = e.target.result;
-    const lines = text.split(/\r?\n/).filter(l => l.trim());
-    csvParsed = [];
-    const errors = [];
-    lines.forEach((line, i) => {
-      const parts = line.split(',');
-      if (parts.length >= 2) {
-        const en = parts[0].trim().toLowerCase();
-        const ja = parts[1].trim();
-        if (en && ja) csvParsed.push({ en, ja });
-        else errors.push(i + 1);
-      } else {
-        errors.push(i + 1);
-      }
-    });
+    const { parsed, errors, dividers: csvDiv } = parseCsvText(text);
+    csvParsed = parsed;
+    csvDividersParsed = csvDiv;
     const preview = document.getElementById('csvPreview');
     const label = document.getElementById('csvPreviewLabel');
     preview.style.display = 'block';
     if (csvParsed.length > 0) {
-      label.textContent = `✅ ${csvParsed.length}語 読み込みました` + (errors.length ? `（${errors.length}行スキップ）` : '');
+      let msg = `✅ ${csvParsed.length}語 読み込みました`;
+      if (csvDiv.size > 0) msg += `（${csvDiv.size + 1}グループ）`;
+      if (errors.length) msg += `（${errors.length}行スキップ）`;
+      label.textContent = msg;
       label.style.color = 'var(--accent3)';
       document.getElementById('csvStartBtn').disabled = csvParsed.length < 4;
     } else {
@@ -1544,13 +1621,13 @@ function readCsvFile(file) {
 
 function loadCsvWords() {
   if (csvParsed.length < 4) { alert('最低4語必要です'); return; }
-  words = csvParsed; dividers = new Set();
+  words = csvParsed; dividers = new Set(csvDividersParsed);
   saveWords(); renderWordList();
   closeSettings();
 }
 
 function downloadCsvTemplate() {
-  const sample = 'apple,りんご\nschool,学校\nteacher,先生\nfriend,友達\nbeautiful,美しい\nstudy,勉強する\n';
+  const sample = 'apple,りんご\nschool,学校\nteacher,先生\n\nfriend,友達\nbeautiful,美しい\nstudy,勉強する\n';
   const blob = new Blob([sample], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1566,6 +1643,7 @@ function loadDemoWords() {
 
 // ── Google Sheets ──────────────────────────────────────────
 let gsheetParsed = [];
+let gsheetDividersParsed = new Set();
 
 function onGsheetUrlInput() {
   const url = document.getElementById('gsheetUrl').value.trim();
@@ -1573,6 +1651,7 @@ function onGsheetUrlInput() {
   document.getElementById('gsheetStatus').style.display = 'none';
   document.getElementById('gsheetStartBtn').disabled = true;
   gsheetParsed = [];
+  gsheetDividersParsed = new Set();
 }
 
 function getGsheetExportUrl(input) {
@@ -1595,21 +1674,37 @@ function getGsheetExportUrl(input) {
 }
 
 function parseCsvText(text) {
-  const lines = text.split(/\r?\n/).filter(l => l.trim());
+  const lines = text.split(/\r?\n/);
   const parsed = [];
   const errors = [];
+  const csvDividers = new Set();
+  let lastWasBlank = false;
   lines.forEach((line, i) => {
-    const parts = line.split(',');
+    const trimmed = line.trim();
+    if (!trimmed) {
+      // 空行 → 直前に単語があればステージ区切り
+      if (parsed.length > 0) lastWasBlank = true;
+      return;
+    }
+    const parts = trimmed.split(',');
     if (parts.length >= 2) {
       const en = parts[0].trim().toLowerCase();
       const ja = parts[1].trim();
-      if (en && ja) parsed.push({ en, ja });
-      else errors.push(i + 1);
+      if (en && ja) {
+        // 空行の後の最初の単語 → 直前の単語にdividerを設定
+        if (lastWasBlank && parsed.length > 0) {
+          csvDividers.add(parsed.length - 1);
+        }
+        lastWasBlank = false;
+        parsed.push({ en, ja });
+      } else {
+        errors.push(i + 1);
+      }
     } else {
       errors.push(i + 1);
     }
   });
-  return { parsed, errors };
+  return { parsed, errors, dividers: csvDividers };
 }
 
 async function fetchGsheetCsv() {
@@ -1626,17 +1721,21 @@ async function fetchGsheetCsv() {
   fetchBtn.disabled = true;
   startBtn.disabled = true;
   gsheetParsed = [];
+  gsheetDividersParsed = new Set();
 
   try {
     const res = await fetch(exportUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const text = await res.text();
-    const { parsed, errors } = parseCsvText(text);
+    const { parsed, errors, dividers: gsheetDiv } = parseCsvText(text);
     gsheetParsed = parsed;
+    gsheetDividersParsed = gsheetDiv;
     if (parsed.length > 0) {
       statusEl.style.color = 'var(--accent3)';
-      statusEl.textContent = `✅ ${parsed.length}語 読み込みました` +
-        (errors.length ? `（${errors.length}行スキップ）` : '');
+      let msg = `✅ ${parsed.length}語 読み込みました`;
+      if (gsheetDiv.size > 0) msg += `（${gsheetDiv.size + 1}グループ）`;
+      if (errors.length) msg += `（${errors.length}行スキップ）`;
+      statusEl.textContent = msg;
       startBtn.disabled = parsed.length < 4;
     } else {
       statusEl.style.color = 'var(--accent)';
@@ -1656,7 +1755,7 @@ async function fetchGsheetCsv() {
 
 function loadGsheetWords() {
   if (gsheetParsed.length < 4) { alert('最低4語必要です'); return; }
-  words = gsheetParsed; dividers = new Set();
+  words = gsheetParsed; dividers = new Set(gsheetDividersParsed);
   saveWords(); renderWordList();
   closeSettings();
 }
@@ -2147,7 +2246,7 @@ function showSpellQuestion() {
         s.className = 'answer-guide-slot-space';
       } else {
         s.className = 'answer-guide-slot';
-        s.textContent = ch.toUpperCase();
+        s.textContent = kbUpper ? ch.toUpperCase() : ch;
       }
       guide.appendChild(s);
     }
@@ -2163,6 +2262,22 @@ function showSpellQuestion() {
   }
 
   renderSpellSlots(); renderKeyboard();
+
+  // Apply handwriting mode UI state
+  if (hwMode) {
+    document.getElementById('spellKeyboard').style.display = 'none';
+    document.getElementById('hwPadWrap').style.display = '';
+    document.getElementById('spellSubmitBtn').style.display = 'none';
+    document.getElementById('btnModeKb').classList.remove('active');
+    document.getElementById('btnModeHw').classList.add('active');
+    initHwForQuestion();
+  } else {
+    document.getElementById('spellKeyboard').style.display = '';
+    document.getElementById('hwPadWrap').style.display = 'none';
+    document.getElementById('spellSubmitBtn').style.display = '';
+    document.getElementById('btnModeKb').classList.add('active');
+    document.getElementById('btnModeHw').classList.remove('active');
+  }
 }
 
 function renderSpellSlots() {
@@ -2180,11 +2295,13 @@ function renderSpellSlots() {
       slot.className = 'spell-slot'; slot.id = 'slot-' + i;
       if (i === 0 && hintUsed) {
         slot.classList.add('hint-slot');
-        slot.textContent = spellAnswer[0].toUpperCase();
+        slot.textContent = kbUpper ? spellAnswer[0].toUpperCase() : spellAnswer[0];
       } else if (spellInput[i]) {
         slot.classList.add('filled');
-        slot.textContent = spellInput[i].toUpperCase();
-        slot.onclick = () => deleteUpTo(i);
+        slot.textContent = kbUpper ? spellInput[i].toUpperCase() : spellInput[i];
+        if (!hwMode) slot.onclick = () => deleteUpTo(i);
+      } else if (hwMode && i === hwCurrentPos) {
+        slot.classList.add('current-slot');
       }
       container.appendChild(slot);
     }
@@ -2206,10 +2323,17 @@ function renderKeyboard() {
   KB_ROWS.forEach((row, ri) => {
     const rowDiv = document.createElement('div');
     rowDiv.className = 'kb-row';
+    if (ri === 2) {
+      const shift = document.createElement('button');
+      shift.className = 'kb-key kb-shift' + (kbUpper ? ' active' : '');
+      shift.textContent = '⇧';
+      shift.onclick = toggleKbCase;
+      rowDiv.appendChild(shift);
+    }
     row.split('').forEach(ch => {
       const key = document.createElement('button');
       key.className = 'kb-key'; key.id = 'key-' + ch;
-      key.textContent = ch.toUpperCase();
+      key.textContent = kbUpper ? ch.toUpperCase() : ch;
       key.onclick = () => typeKey(ch);
       rowDiv.appendChild(key);
     });
@@ -2221,6 +2345,12 @@ function renderKeyboard() {
     }
     container.appendChild(rowDiv);
   });
+}
+
+function toggleKbCase() {
+  kbUpper = !kbUpper;
+  renderKeyboard();
+  renderSpellSlots();
 }
 
 function typeKey(ch) {
@@ -2254,7 +2384,12 @@ function deleteUpTo(i) {
 function useHint() {
   hintUsed = true; spellInput[0] = spellAnswer[0];
   document.getElementById('hintBtn').disabled = true;
+  if (hwMode) {
+    hwCurrentPos = findNextHwSlot();
+    updateHwGuide();
+  }
   renderSpellSlots();
+  if (hwMode) focusHwInput();
 }
 
 function spellSubmit() {
@@ -2276,7 +2411,7 @@ function spellSubmit() {
       const ok = (spellInput[i]||'').toLowerCase() === spellAnswer[i];
       slot.classList.add(ok ? 'correct-slot' : 'wrong-slot');
     }
-    slot.textContent = spellAnswer[i].toUpperCase();
+    slot.textContent = kbUpper ? spellAnswer[i].toUpperCase() : spellAnswer[i];
   }
 
   if (isPracticeMode) {
@@ -2331,7 +2466,7 @@ function spellSkip() {
     if (slot) {
       slot.classList.remove('filled','hint-slot');
       slot.classList.add('wrong-slot');
-      slot.textContent = spellAnswer[i].toUpperCase();
+      slot.textContent = kbUpper ? spellAnswer[i].toUpperCase() : spellAnswer[i];
     }
   }
   addWeakWord(gameWords[currentIndex]);
@@ -2345,12 +2480,213 @@ function spellSkip() {
   }, 1200);
 }
 
+// ════════════════════════════════
+// Handwriting Mode
+// ════════════════════════════════
+function toggleHwMode(mode) {
+  hwMode = mode === 'hw';
+  localStorage.setItem('wh_hwMode', hwMode ? '1' : '0');
+  document.getElementById('btnModeKb').classList.toggle('active', !hwMode);
+  document.getElementById('btnModeHw').classList.toggle('active', hwMode);
+  document.getElementById('spellKeyboard').style.display = hwMode ? 'none' : '';
+  document.getElementById('hwPadWrap').style.display = hwMode ? '' : 'none';
+  document.getElementById('spellSubmitBtn').style.display = hwMode ? 'none' : '';
+  if (hwMode) {
+    hwCurrentPos = findNextHwSlot();
+    renderSpellSlots();
+    focusHwInput();
+  } else {
+    renderSpellSlots();
+  }
+}
+
+function findNextHwSlot() {
+  const start = hintUsed ? 1 : 0;
+  for (let i = start; i < spellAnswer.length; i++) {
+    if (spellAnswer[i] === ' ') continue;
+    if (!spellInput[i]) return i;
+  }
+  return -1;
+}
+
+function focusHwInput() {
+  const inp = document.getElementById('hwInput');
+  if (inp && hwMode) {
+    inp.value = '';
+    setTimeout(() => inp.focus(), 50);
+  }
+}
+
+function initHwForQuestion() {
+  hwCurrentPos = findNextHwSlot();
+  hwProcessing = false;
+  const fb = document.getElementById('hwFeedback');
+  if (fb) { fb.textContent = ''; fb.className = 'hw-feedback'; }
+  updateHwGuide();
+  if (hwMode) focusHwInput();
+}
+
+function updateHwGuide() {
+  const guide = document.getElementById('hwGuide');
+  if (!guide) return;
+  if (hwCurrentPos >= 0 && hwCurrentPos < spellAnswer.length) {
+    const pos = hwCurrentPos + 1;
+    const total = spellAnswer.replace(/ /g, '').length;
+    guide.textContent = `${pos}文字目を書こう（${pos}/${total}）`;
+  } else {
+    guide.textContent = 'ここに1文字ずつ書こう';
+  }
+}
+
+// Handle input from handwriting pad (Scribble or keyboard)
+document.addEventListener('DOMContentLoaded', () => {
+  const hwInput = document.getElementById('hwInput');
+  if (hwInput) {
+    hwInput.addEventListener('input', onHwInput);
+    // Prevent form submission on Enter
+    hwInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') e.preventDefault();
+    });
+  }
+  // Restore hw mode preference
+  if (localStorage.getItem('wh_hwMode') === '1') {
+    hwMode = true;
+  }
+});
+
+function onHwInput(e) {
+  const input = e.target;
+  let val = input.value.trim().toLowerCase();
+  input.value = '';
+  if (!val || spellLocked || hwProcessing) return;
+
+  // Take only the first alphabetic character
+  let ch = '';
+  for (const c of val) {
+    if (/[a-z-]/.test(c)) { ch = c; break; }
+  }
+  if (!ch) return;
+
+  const pos = hwCurrentPos;
+  if (pos === -1 || pos >= spellAnswer.length) return;
+
+  const expected = spellAnswer[pos];
+  const fb = document.getElementById('hwFeedback');
+
+  if (ch === expected) {
+    // Correct character
+    spellInput[pos] = ch;
+    renderSpellSlots();
+    // Brief green flash on the just-filled slot
+    const filledSlot = document.getElementById('slot-' + pos);
+    if (filledSlot) {
+      filledSlot.classList.remove('filled');
+      filledSlot.classList.add('correct-slot');
+      setTimeout(() => {
+        filledSlot.classList.remove('correct-slot');
+        filledSlot.classList.add('filled');
+      }, 500);
+    }
+    if (fb) {
+      fb.textContent = '○ 正解！';
+      fb.className = 'hw-feedback correct';
+    }
+
+    // Find next position
+    hwCurrentPos = findNextHwSlot();
+    updateHwGuide();
+
+    if (hwCurrentPos === -1) {
+      // All letters filled → auto-submit
+      hwProcessing = true;
+      setTimeout(() => {
+        if (fb) { fb.textContent = ''; fb.className = 'hw-feedback'; }
+        spellSubmit();
+        hwProcessing = false;
+      }, 500);
+    } else {
+      renderSpellSlots();
+      focusHwInput();
+      setTimeout(() => {
+        if (fb) { fb.textContent = ''; fb.className = 'hw-feedback'; }
+      }, 600);
+    }
+  } else {
+    // Wrong character
+    if (!isPracticeMode) {
+      // Normal mode: wrong character → show full answer, enter practice mode
+      hwProcessing = true;
+      handleHwMistake();
+    } else {
+      // Practice mode: show error, let them retry same position
+      showHwCharError(pos, expected);
+    }
+  }
+}
+
+function handleHwMistake() {
+  spellLocked = true;
+  addWeakWord(gameWords[currentIndex]);
+  wrong++; streak = 0;
+
+  // Show correct answer in all slots
+  for (let i = 0; i < spellAnswer.length; i++) {
+    const slot = document.getElementById('slot-' + i);
+    if (slot) {
+      slot.classList.remove('filled', 'hint-slot', 'current-slot');
+      slot.classList.add('wrong-slot');
+      slot.textContent = kbUpper ? spellAnswer[i].toUpperCase() : spellAnswer[i];
+    }
+  }
+
+  showFeedback(false);
+  document.getElementById('spellScore').textContent = score;
+  document.getElementById('spellStreak').textContent = '';
+
+  // Enter practice mode
+  isPracticeMode = true;
+  setTimeout(() => {
+    spellInput = []; spellLocked = false; hintUsed = false;
+    hwProcessing = false;
+    showSpellQuestion();
+  }, 1200);
+}
+
+function showHwCharError(pos, expected) {
+  hwProcessing = true;
+  const slot = document.getElementById('slot-' + pos);
+  const fb = document.getElementById('hwFeedback');
+
+  if (slot) {
+    slot.textContent = kbUpper ? expected.toUpperCase() : expected;
+    slot.classList.add('wrong-slot');
+    slot.classList.remove('current-slot');
+  }
+  if (fb) {
+    const disp = kbUpper ? expected.toUpperCase() : expected;
+    fb.textContent = `✕「${disp}」だよ！もう一度`;
+    fb.className = 'hw-feedback wrong';
+  }
+
+  setTimeout(() => {
+    if (slot) {
+      slot.textContent = '';
+      slot.classList.remove('wrong-slot');
+      slot.classList.add('current-slot');
+    }
+    if (fb) { fb.textContent = ''; fb.className = 'hw-feedback'; }
+    hwProcessing = false;
+    focusHwInput();
+  }, 900);
+}
+
 document.addEventListener('keydown', e => {
   const active = document.querySelector('.screen.active');
   if (!active || active.id !== 'screenSpell') return;
+  if (hwMode) return; // handwriting mode: let hw input handle it
   if (e.key === 'Backspace') { deleteLast(); return; }
   if (e.key === 'Enter' && !document.getElementById('spellSubmitBtn').disabled) { spellSubmit(); return; }
-  if (/^[a-zA-Z]$/.test(e.key)) typeKey(e.key.toLowerCase());
+  if (/^[a-zA-Z-]$/.test(e.key)) typeKey(e.key.toLowerCase());
 });
 
 // ════════════════════════════════
